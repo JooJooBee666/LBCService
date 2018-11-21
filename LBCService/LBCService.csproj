@@ -53,8 +53,7 @@
     <Compile Include="LenovoBacklightControl.Designer.cs">
       <DependentUpon>LenovoBacklightControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="Logging.cs" />
-    <Compile Include="NativeMethods.cs" />
+    <Compile Include="PowerMethods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>

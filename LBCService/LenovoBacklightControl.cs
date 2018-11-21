@@ -1,17 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
+﻿using System.Diagnostics;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Win32;
-using System.Runtime.InteropServices;
 
 namespace LBCService
 {
@@ -24,10 +12,12 @@ namespace LBCService
             InitializeComponent();
             BLC = new BacklightControls();
 
+            //
+            // Register Event log source if it is not already
+            //
             if (!EventLog.SourceExists("LenovoBacklightControl"))
             {
-                System.Diagnostics.EventLog.CreateEventSource(
-                    "LenovoBacklightControl", "System");
+                EventLog.CreateEventSource("LenovoBacklightControl", "System");
             }
 
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service starting...", EventLogEntryType.Information, 50901);
@@ -38,9 +28,9 @@ namespace LBCService
             DebugMode();
 
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.", EventLogEntryType.Information, 50902);
-            NativeMethods.RegisterServiceForPowerNotifications(ServiceName);
+            PowerMethods.RegisterServiceForPowerNotifications(ServiceName);
 
-            //Activate KB backlights on boot
+            //Activate KB Backlights on boot
             BLC.ActivateBacklight();    
         }
 
@@ -54,7 +44,6 @@ namespace LBCService
         protected override void OnStop()
         {
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service stopping....", EventLogEntryType.Information, 50903);
-            Logging.LogMessage("OnStart completed successfully.");
         }
     }
 }
