@@ -17,6 +17,7 @@ namespace LBCService
 
             //get internal method info for changing the KB Backlight status
             var setKeyboardBackLightStatusInfo = GetRuntimeMethodsExt(AssemblyType, "SetKeyboardBackLightStatus");
+
             //
             //TODO: add config file to make lightLevel (light level) user defineable
             //

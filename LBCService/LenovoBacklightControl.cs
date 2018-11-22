@@ -28,17 +28,17 @@ namespace LBCService
             DebugMode();
 
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.", EventLogEntryType.Information, 50902);
-            PowerMethods.RegisterServiceForPowerNotifications(ServiceName);
+            PowerMethods.RegisterServiceForPowerNotifications(this);
 
             //Activate KB Backlights on boot
-            BLC.ActivateBacklight();    
+            //BLC.ActivateBacklight();    
         }
 
 
         [Conditional("DEBUG")]
         private static void DebugMode()
         {
-            Debugger.Break();
+            Debugger.Launch();
         }
 
         protected override void OnStop()
