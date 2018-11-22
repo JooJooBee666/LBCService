@@ -65,6 +65,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="READM.ME" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="LenovoBacklightControl.resx">
