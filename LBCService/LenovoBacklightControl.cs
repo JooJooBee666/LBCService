@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.ServiceProcess;
 
 namespace LBCService
@@ -33,7 +34,6 @@ namespace LBCService
             //Activate KB Backlights on boot
             //BLC.ActivateBacklight();    
         }
-
 
         [Conditional("DEBUG")]
         private static void DebugMode()

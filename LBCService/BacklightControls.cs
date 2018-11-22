@@ -1,17 +1,31 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.ServiceProcess;
 
 namespace LBCService
 {
     public class BacklightControls
     {
-        public void ActivateBacklight()
+        public void ActivateBacklight(ServiceBase serviceBase)
         {
             //
             // TODO: add config file to make Keyboard_Core user defineable
             //
-            Keyboard_Core = Assembly.LoadFile("C:\\ProgramData\\Lenovo\\ImController\\Plugins\\ThinkKeyboardPlugin\\x86\\Keyboard_Core.dll");
+            if (System.IO.File.Exists(
+                "C:\\ProgramData\\Lenovo\\ImController\\Plugins\\ThinkKeyboardPlugin\\x86\\Keyboard_Core.dll"))
+            {
+                Keyboard_Core =
+                    Assembly.LoadFile(
+                        "C:\\ProgramData\\Lenovo\\ImController\\Plugins\\ThinkKeyboardPlugin\\x86\\Keyboard_Core.dll");
+            }
+            else
+            {
+                EventLog.WriteEntry("LenovoBacklightControl", "Unable to load Keyboard_Core.dll.  Service will stop.", EventLogEntryType.Information, 50903);
+                serviceBase.Stop();
+                return;
+            }
             AssemblyType = Keyboard_Core.GetType("Keyboard_Core.KeyboardControl");
             KCInstance = Activator.CreateInstance(AssemblyType);
 

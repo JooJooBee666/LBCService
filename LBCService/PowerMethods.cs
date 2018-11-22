@@ -196,7 +196,7 @@ namespace LBCService
 #if DEBUG
             EventLog.WriteEntry("LenovoBacklightControl", "Detected system resume.  Activating backlight.", EventLogEntryType.Information, 50905);
 #endif
-            LenovoBacklightControl.BLC.ActivateBacklight();
+            LenovoBacklightControl.BLC.ActivateBacklight(_registeredServiceBase);
             ConnectedStandby = false;
         }
     }
