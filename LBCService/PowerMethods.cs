@@ -135,8 +135,6 @@ namespace LBCService
 
         public static bool ConnectedStandby { get; private set; }
 
-        //public static bool SupportsConnectedStandby { get; private set; }
-
         public static void UnregisterFromPowerNotifications()
         {
 #if DEBUG
