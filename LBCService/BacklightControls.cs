@@ -2,28 +2,27 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.ServiceProcess;
 
 namespace LBCService
 {
     public class BacklightControls
     {
-        public void ActivateBacklight(ServiceBase serviceBase)
+        public void ActivateBacklight(int lightValue)
         {
             //
             // TODO: add config file to make Keyboard_Core user defineable
             //
-            if (System.IO.File.Exists(
-                "C:\\ProgramData\\Lenovo\\ImController\\Plugins\\ThinkKeyboardPlugin\\x86\\Keyboard_Core.dll"))
+            var keyboardCoreDLL =
+                @"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll";
+            if (System.IO.File.Exists(keyboardCoreDLL))
             {
                 Keyboard_Core =
-                    Assembly.LoadFile(
-                        "C:\\ProgramData\\Lenovo\\ImController\\Plugins\\ThinkKeyboardPlugin\\x86\\Keyboard_Core.dll");
+                    Assembly.LoadFile(keyboardCoreDLL);
             }
             else
             {
-                EventLog.WriteEntry("LenovoBacklightControl", "Unable to load Keyboard_Core.dll.  Service will stop.", EventLogEntryType.Information, 50903);
-                serviceBase.Stop();
+                EventLog.WriteEntry("LenovoBacklightControl", "Unable to load Keyboard_Core.dll.  Service will stop.", EventLogEntryType.Error, 50903);
+                LenovoBacklightControl.LBCServiceBase.Stop();
                 return;
             }
             AssemblyType = Keyboard_Core.GetType("Keyboard_Core.KeyboardControl");
@@ -39,13 +38,14 @@ namespace LBCService
             // 1 = low
             // 2 = high
             //
-            object[] lightLevel = { 2 };
+            object[] lightLevel = { lightValue };
             var output = (UInt32)setKeyboardBackLightStatusInfo.Invoke(KCInstance, lightLevel);
+            IdleTimerControl.BackLightOn = lightValue != 0;
         }
 
         private Assembly Keyboard_Core;
         private Type AssemblyType;
-        private Object KCInstance;
+        private object KCInstance;
 
         private MethodInfo GetRuntimeMethodsExt(Type type, string name, params Type[] types)
         {

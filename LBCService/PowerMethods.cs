@@ -28,7 +28,6 @@ namespace LBCService
         private const int PBT_POWERSETTINGCHANGE = 0x8013; // DPPE
         private const int SERVICE_CONTROL_POWEREVENT = 0x0000000D;
         private const int SERVICE_CONTROL_STOP = 0x00000001;
-        private static ServiceBase _registeredServiceBase;
 
         //
         // Structure is used the PBT_POWERSETTINGSCHANGE message is sent.
@@ -106,7 +105,6 @@ namespace LBCService
 
         internal static void RegisterServiceForPowerNotifications(ServiceBase serviceBase)
         {
-            _registeredServiceBase = serviceBase;
             EventLog.WriteEntry("LenovoBacklightControl", "Registering Service for Power Notifications:" + serviceBase.ServiceName + ".", EventLogEntryType.Information, 50906);
             var serviceStatusHandle = RegisterServiceCtrlHandlerEx(serviceBase.ServiceName, HandlerCallback, IntPtr.Zero);
 
@@ -163,7 +161,7 @@ namespace LBCService
                 else
                 {
 #if DEBUG
-                    EventLog.WriteEntry("LenovoBacklightControl", "ERROR: powersetting == null",EventLogEntryType.Information, 50906);
+                    EventLog.WriteEntry("LenovoBacklightControl", "ERROR: powersetting == null",EventLogEntryType.Error, 50906);
 #endif
                 }
             }
@@ -173,7 +171,7 @@ namespace LBCService
                 EventLog.WriteEntry("LenovoBacklightControl", "SERVICE_CONTROL_STOP received.", EventLogEntryType.Information, 50906);
 #endif
                 UnregisterFromPowerNotifications();
-                _registeredServiceBase.Stop();
+                LenovoBacklightControl.LBCServiceBase.Stop();
             }
         }
 
@@ -196,7 +194,7 @@ namespace LBCService
 #if DEBUG
             EventLog.WriteEntry("LenovoBacklightControl", "Detected system resume.  Activating backlight.", EventLogEntryType.Information, 50905);
 #endif
-            LenovoBacklightControl.BLC.ActivateBacklight(_registeredServiceBase);
+            LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
             ConnectedStandby = false;
         }
     }
