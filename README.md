@@ -11,8 +11,8 @@ NOTE: This was only tested using the LOCAL SYSTEM account for the service log on
 This service will create a file called LCBServiceConfig.xml in the same folder as the executable. The path to
 Keyboard_Core.dll can be specified/changed here, as well as the preferred brightness level.
 
-TODOs:  Add support for a timeout
-		Add support for enabling again after timeout via KB or mouse movement
+TODOs:  Add support for a timeout.
+		Add support for enabling again after timeout via KB or mouse movement.
 		Both of these will require a "helper" app that will need to run in the user space.
 
 This program was written using the work of liguis- here: https://github.com/ligius-/lenovo-backlight-control/
