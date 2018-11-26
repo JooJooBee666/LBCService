@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28010.2048
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LBCService", "LBCService\LBCService.csproj", "{439AC2FB-0AE9-4351-A3BA-1C0D3DEAC4F6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LBCServiceSettings", "LBCServiceSettings\LBCServiceSettings.csproj", "{63AB0BAC-F427-4F21-B5EC-422FBF3A0B3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{439AC2FB-0AE9-4351-A3BA-1C0D3DEAC4F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{439AC2FB-0AE9-4351-A3BA-1C0D3DEAC4F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{439AC2FB-0AE9-4351-A3BA-1C0D3DEAC4F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63AB0BAC-F427-4F21-B5EC-422FBF3A0B3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63AB0BAC-F427-4F21-B5EC-422FBF3A0B3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63AB0BAC-F427-4F21-B5EC-422FBF3A0B3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63AB0BAC-F427-4F21-B5EC-422FBF3A0B3B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

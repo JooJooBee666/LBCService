@@ -1,16 +1,6 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Pipes;
-using System.Net.Http;
-using System.Runtime.CompilerServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
-using System.ServiceModel;
-using System.ServiceModel.Channels;
+﻿using System.Diagnostics;
 using System.ServiceProcess;
 using System.Threading;
-using System.Windows.Forms.VisualStyles;
 
 namespace LBCService
 {
@@ -21,7 +11,7 @@ namespace LBCService
         public static ServiceBase LBCServiceBase;
         public static int UserTimeoutPreference;
         public static string KBCorePath;
-        Thread IdleTimerThread;
+        Thread NamedPipeThread;
         public static AutoResetEvent StopRequest = new AutoResetEvent(false);
 
         public LenovoBacklightControl()
@@ -31,7 +21,7 @@ namespace LBCService
             BLC = new BacklightControls();
             LoadConfig();
             LBCServiceBase = this;
-            UserTimeoutPreference = 1200;
+            UserTimeoutPreference = 30;
             AutoLog = true;
 
             //
@@ -57,8 +47,8 @@ namespace LBCService
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.",
                 EventLogEntryType.Information, 50902);
             PowerMethods.RegisterServiceForPowerNotifications(this);
-            //IdleTimerThread = new Thread(() => IdleTimerControl.SetTimer(UserTimeoutPreference));
-            //IdleTimerThread.Start();
+            //NamedPipeThread = new Thread(() => NamedPipeServer.EnableNamedPipeServer());
+            //NamedPipeThread.Start();
         }
 
         [Conditional("DEBUG")]
@@ -71,8 +61,8 @@ namespace LBCService
         {
             //EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service stopping....", EventLogEntryType.Information, 50903);
             //StopRequest.Set();
-
-            //IdleTimerThread.Join();
+            NamedPipeServer.StopNamedPipe();
+            //NamedPipeThread.Join();
         }
     }
 }

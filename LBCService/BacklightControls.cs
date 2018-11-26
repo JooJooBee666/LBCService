@@ -9,15 +9,10 @@ namespace LBCService
     {
         public void ActivateBacklight(int lightValue)
         {
-            //
-            // TODO: add config file to make Keyboard_Core user defineable
-            //
-            var keyboardCoreDLL =
-                @"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll";
-            if (System.IO.File.Exists(keyboardCoreDLL))
+            if (System.IO.File.Exists(LenovoBacklightControl.KBCorePath))
             {
                 Keyboard_Core =
-                    Assembly.LoadFile(keyboardCoreDLL);
+                    Assembly.LoadFile(LenovoBacklightControl.KBCorePath);
             }
             else
             {
@@ -31,16 +26,8 @@ namespace LBCService
             //get internal method info for changing the KB Backlight status
             var setKeyboardBackLightStatusInfo = GetRuntimeMethodsExt(AssemblyType, "SetKeyboardBackLightStatus");
 
-            //
-            //TODO: add config file to make lightLevel (light level) user defineable
-            //
-            // 0 = off
-            // 1 = low
-            // 2 = high
-            //
             object[] lightLevel = { lightValue };
             var output = (UInt32)setKeyboardBackLightStatusInfo.Invoke(KCInstance, lightLevel);
-            IdleTimerControl.BackLightOn = lightValue != 0;
         }
 
         private Assembly Keyboard_Core;
