@@ -74,7 +74,7 @@ namespace LBCService
                 // End waiting for the connection
                 PipeServer.EndWaitForConnection(iAsyncResult);
 
-                // Read data and prevent access to _namedPipeXmlPayload during threaded operations
+                // Read data and prevent access to pip during threaded operations
                 lock (ThreadLocker)
                 {
                     // Read data from client
@@ -83,7 +83,7 @@ namespace LBCService
                     switch (status)
                     {
                         case "LBC-EnableBacklight":
-                            LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.UserTimeoutPreference);
+                            LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
                             break;
                         case "LBC-DisableBacklight":
                             LenovoBacklightControl.BLC.ActivateBacklight(0);

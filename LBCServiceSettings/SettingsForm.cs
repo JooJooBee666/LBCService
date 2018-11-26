@@ -76,7 +76,8 @@ namespace LBCServiceSettings
 
         public static void EnableBacklight()
         {
-            var client = new NamedPipeClientStream("LenovoBacklightControlPipe");
+            
+            var client = new NamedPipeClientStream(".","LenovoBacklightControlPipe",PipeDirection.Out);
             client.Connect();
             var writer = new StreamWriter(client);
             //Thread.Sleep(5000);
@@ -88,7 +89,7 @@ namespace LBCServiceSettings
 
         public void DisableBacklight()
         {
-            var client = new NamedPipeClientStream("LenovoBacklightControlPipe");
+            var client = new NamedPipeClientStream(".", "LenovoBacklightControlPipe", PipeDirection.Out);
             client.Connect();
             var writer = new StreamWriter(client);
             //Thread.Sleep(5000);

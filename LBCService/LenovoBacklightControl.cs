@@ -47,8 +47,8 @@ namespace LBCService
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.",
                 EventLogEntryType.Information, 50902);
             PowerMethods.RegisterServiceForPowerNotifications(this);
-            //NamedPipeThread = new Thread(() => NamedPipeServer.EnableNamedPipeServer());
-            //NamedPipeThread.Start();
+            NamedPipeThread = new Thread(NamedPipeServer.EnableNamedPipeServer);
+            NamedPipeThread.Start();
         }
 
         [Conditional("DEBUG")]
@@ -62,7 +62,7 @@ namespace LBCService
             //EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service stopping....", EventLogEntryType.Information, 50903);
             //StopRequest.Set();
             NamedPipeServer.StopNamedPipe();
-            //NamedPipeThread.Join();
+            NamedPipeThread.Join();
         }
     }
 }
