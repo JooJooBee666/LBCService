@@ -17,12 +17,13 @@ namespace LBCService
         {
             public string Keyboard_Core_Path { get; set; }
             public int Light_Level { get; set; }
+            public int Timeout_Preference { get; set; }
         }
 
         /// <summary>
         /// Create new Config XML with default values if not present 
         /// </summary>
-        public static bool CreateConfigXML()
+        public static bool CreateConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference)
         {
             try
             {
@@ -30,7 +31,8 @@ namespace LBCService
                     new XElement("configuration",
                         new XElement("Keyboard_Core_Path",
                             @"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll"),
-                        new XElement("Light_Level", "2")
+                        new XElement("Light_Level", "2"), 
+                        new XElement("Timeout_Preference","300")
                     )
                 );
                 configXML.Save(XMLPath);
@@ -64,7 +66,7 @@ namespace LBCService
             //
             if (!System.IO.File.Exists(XMLPath))
             {
-                if (!CreateConfigXML())
+                if (!CreateConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll",2,300))
                 {
                     // if creation fails, return default values
                     return configData;
@@ -72,6 +74,7 @@ namespace LBCService
             }
 
             var xmlConfigDocument = new XmlDocument();
+            var TimeoutPreferenceFound = false;
             try
             {
                 xmlConfigDocument.Load(XMLPath);
@@ -85,7 +88,15 @@ namespace LBCService
                         case "Light_Level":
                             configData.Light_Level = int.Parse(xmlElement.InnerText);
                             break;
+                        case "Timeout_Preference":
+                            configData.Timeout_Preference = int.Parse(xmlElement.InnerText);
+                            TimeoutPreferenceFound = true;
+                            break;
                     }
+                }
+                if (!TimeoutPreferenceFound)
+                {
+                    CreateConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300);
                 }
                 return configData;
             }
