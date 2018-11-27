@@ -1,107 +1,237 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.IO.Pipes;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
+using System.ServiceProcess;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace LBCServiceSettings
 {
     public partial class SettingsForm : Form
     {
-        internal struct LASTINPUTINFO
-        {
-            public uint cbSize;
-            public uint dwTime;
-        }
+        private static SettingsForm Callback;
+        private static XMLConfigMethods.ConfigData configData;
+        private static Thread CheckServiceThread;
+        private static bool StopThread;
+        private static SynchronizationContext ctx;
 
         public SettingsForm()
         {
             InitializeComponent();
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-   
-        }
-
-        public static int IdleTime() //In seconds
-        {
-            LASTINPUTINFO lastinputinfo = new LASTINPUTINFO();
-            lastinputinfo.cbSize = (uint) Marshal.SizeOf(lastinputinfo);
-            GetLastInputInfo(ref lastinputinfo);
-            return (int) ((((Environment.TickCount & int.MaxValue) - (lastinputinfo.dwTime & int.MaxValue)) & int.MaxValue) / 1000);
-        }
-
-        [DllImport("User32.dll")]
-        private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
-
-        [DllImport("Kernel32.dll")]
-        private static extern uint GetLastError();
-
-        public static uint GetIdleTime()
-        {
-            LASTINPUTINFO lastInPut = new LASTINPUTINFO();
-            lastInPut.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(lastInPut);
-            GetLastInputInfo(ref lastInPut);
-
-            return ((uint)Environment.TickCount - lastInPut.dwTime);
-        }
-        /// <summary>
-        /// Get the Last input time in milliseconds
-        /// </summary>
-        /// <returns></returns>
-        public static long GetLastInputTime()
-        {
-            LASTINPUTINFO lastInPut = new LASTINPUTINFO();
-            lastInPut.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(lastInPut);
-            if (!GetLastInputInfo(ref lastInPut))
+            ctx = SynchronizationContext.Current;
+            try
             {
-                throw new Exception(GetLastError().ToString());
+                var sc = new ServiceController("LenovoBacklightControl");
+                if (sc.Status == ServiceControllerStatus.Running)
+                {
+                    //Do nothing, this is to allow the app to catch the exception if the service is not present
+                }
             }
-            return lastInPut.dwTime;
+            catch (Exception e)
+            {
+                MessageBox.Show("Could not find service.  Please install.", "Service Error!", MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            openFileDialog.Title = "Browse for Keyboard_Core.dll";
+            openFileDialog.DefaultExt = "dll";
+            openFileDialog.CheckFileExists = true;
+            Callback = this;
+            Callback.ShowInTaskbar = false;
+            Callback.Opacity = 0;
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void SettingsForm_Load(object sender, EventArgs e)
         {
-            EnableBacklight();
+            Systray.InitializeTrayIcon();
+            LoadConfig();
+            var file_info = new FileInfo(configData.Keyboard_Core_Path);
+            var kbCoreParent = file_info.DirectoryName;
+            openFileDialog.InitialDirectory = kbCoreParent;
+            IdleTimerControl.SetTimer(configData.Timeout_Preference);
         }
 
-        public static void EnableBacklight()
+        public static void ShowSettingsForm()
         {
-            
-            var client = new NamedPipeClientStream(".","LenovoBacklightControlPipe",PipeDirection.Out);
-            client.Connect();
-            var writer = new StreamWriter(client);
-            //Thread.Sleep(5000);
-            var idleTime = IdleTime();
-            writer.WriteLine("LBC-EnableBacklight");
-            writer.Flush();
-            client.Dispose();
+            Callback.Show();
+            Callback.ShowInTaskbar = true;
+            Callback.Opacity = 100;
+            StopThread = false;
+            CheckServiceThread = new Thread(CheckService);
+            CheckServiceThread.Start();
         }
 
-        public void DisableBacklight()
+        public static void HideSettingsForm()
         {
-            var client = new NamedPipeClientStream(".", "LenovoBacklightControlPipe", PipeDirection.Out);
-            client.Connect();
-            var writer = new StreamWriter(client);
-            //Thread.Sleep(5000);
-            var idleTime = IdleTime();
-            writer.WriteLine("LBC-DisableBacklight");
-            writer.Flush();
-            client.Dispose();
+            Callback.Hide();
+            Callback.ShowInTaskbar = false;
+            Callback.Opacity = 0;
+            StopThread = true;
+            CheckServiceThread.Abort();
+        }
+        public static void CloseSettingsForm()
+        {
+            Systray.trayIcon.Visible = false;
+            Callback.Close();   
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void browseButton_Click(object sender, EventArgs e)
         {
-            DisableBacklight();
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                keyboardCorePathText.Text = openFileDialog.FileName;
+            }
+        }
+
+        private void saveButton_Click(object sender, EventArgs e)
+        {
+            if (File.Exists(keyboardCorePathText.Text))
+            {
+                if (XMLConfigMethods.SaveConfigXML(keyboardCorePathText.Text, radioLow.Checked ? 1 : 2,
+                    (int)timeoutUpDown.Value))
+                {
+                    // Send message to the service to reload the backlight value
+                    var t = new Thread(() => LBCServiceUpdateNotify("LBC-UpdateConfigData"));
+                    t.Start();
+                    configData.Timeout_Preference = (int)timeoutUpDown.Value;
+                    configData.Light_Level = radioLow.Checked ? 1 : 2;
+                    configData.Keyboard_Core_Path = keyboardCorePathText.Text;
+                    IdleTimerControl.UserTimeout = configData.Timeout_Preference;
+                    IdleTimerControl.RestartTimer();
+                }
+            }
+            else
+            {
+                MessageBox.Show("Path to Keyboard_Core.dll is invalid.  File not found.", "DLL path error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Send given message to the named pipe for the service
+        /// </summary>
+        /// <param name="message"></param>
+        public static void LBCServiceUpdateNotify(string message)
+        {
+            try
+            {
+                var client = new NamedPipeClientStream(".", "LenovoBacklightControlPipe", PipeDirection.Out);
+                client.Connect();
+                var writer = new StreamWriter(client);
+                writer.WriteLine(message);
+                writer.Flush();
+                client.Dispose();
+            }
+            catch (Exception e)
+            {
+                //Not implemented
+            }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.ApplicationExitCall || e.CloseReason == CloseReason.TaskManagerClosing)
+            {
+                StopThread = true;
+                return;
+            }
+            e.Cancel = true;
+            //assuming you want the close-button to only hide the form, 
+            //and are overriding the form's OnFormClosing method:
+            HideSettingsForm();
+        }
+
+        private static void LoadConfig()
+        {
+            configData = XMLConfigMethods.ReadConfigXML();
+            if (configData != null)
+            {
+                Callback.keyboardCorePathText.Text = configData.Keyboard_Core_Path;
+                Callback.timeoutUpDown.Value = configData.Timeout_Preference;
+                if (configData.Light_Level == 1)
+                {
+                    Callback.radioLow.Checked = true;
+                    Callback.radioHigh.Checked = false;
+                }
+                else if (configData.Light_Level == 2)
+                {
+                    Callback.radioLow.Checked = false;
+                    Callback.radioHigh.Checked = true;
+                }
+            }
+        }
+
+        
+        /// <summary>
+        /// Check service status thread.  Updates the status on the form, if it is being shown.
+        /// </summary>
+        private static void CheckService()
+        {
+            while (Callback.ShowInTaskbar && !StopThread)
+            {
+                try
+                {
+                    var sc = new ServiceController("LenovoBacklightControl");
+                    switch (sc.Status)
+                    {
+                        case ServiceControllerStatus.Running:
+                            ctx.Send(delegate
+                            {
+                                Callback.statusTextBox.Text = "Running";
+                                Callback.statusTextBox.ForeColor = Color.LawnGreen;
+                            }, null);
+                            break;
+                        case ServiceControllerStatus.Stopped:
+                            ctx.Send(delegate
+                            {
+                                Callback.statusTextBox.Text = "Stopped";
+                                Callback.statusTextBox.ForeColor = Color.Red;
+                            }, null);
+                            break;
+                        case ServiceControllerStatus.Paused:
+                            ctx.Send(delegate
+                            {
+                                Callback.statusTextBox.Text = "Paused";
+                                Callback.statusTextBox.ForeColor = Color.Orange;
+                            }, null);
+                            break;
+                        case ServiceControllerStatus.StopPending:
+                            ctx.Send(delegate
+                            {
+                                Callback.statusTextBox.Text = "Stopping..";
+                                Callback.statusTextBox.ForeColor = Color.Yellow;
+                            }, null);
+                            break;
+                        case ServiceControllerStatus.StartPending:
+                            ctx.Send(delegate
+                            {
+                                Callback.statusTextBox.Text = "Starting...";
+                                Callback.statusTextBox.ForeColor = Color.Yellow;
+                            }, null);
+                            break;
+                        case ServiceControllerStatus.ContinuePending:
+                            break;
+                        case ServiceControllerStatus.PausePending:
+                            break;
+                        default:
+                            ctx.Send(delegate
+                            {
+                                Callback.statusTextBox.Text = "Status UNKNOWN";
+                                Callback.statusTextBox.ForeColor = Color.Red;
+                            }, null);
+                            break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    ctx.Send(delegate
+                    {
+                        Callback.statusTextBox.Text = "Status UNKNOWN";
+                        Callback.statusTextBox.ForeColor = Color.Red;
+                    }, null);
+                }
+                Thread.Sleep(500);
+            }
         }
     }
 }

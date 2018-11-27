@@ -27,7 +27,7 @@ namespace LBCServiceSettings
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        public void EnableMouseHook()
+        public static void EnableMouseHook()
         {
             MousehookID = SetHook(MouseProc);
         }
@@ -56,10 +56,6 @@ namespace LBCServiceSettings
             // mouse input detected, restart the idle timer and enable the KB 
             // backlight if it was off due to previous timeout
             IdleTimerControl.RestartTimer();
-            if (!IdleTimerControl.BackLightOn)
-            {
-                SettingsForm.EnableBacklight();
-            }
             return CallNextHookEx(MousehookID, nCode, wParam, lParam);
         }
     }

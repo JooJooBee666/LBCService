@@ -28,7 +28,7 @@ namespace LBCServiceSettings
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
-        public void EnableKBHook()
+        public static void EnableKBHook()
         {
             KeyboardHookID = SetHook(KBProc);
         }
@@ -59,11 +59,9 @@ namespace LBCServiceSettings
             IdleTimerControl.RestartTimer();
             if (!IdleTimerControl.BackLightOn)
             {
-                SettingsForm.EnableBacklight();
+                IdleTimerControl.RestartTimer();
             }
             return CallNextHookEx(KeyboardHookID, nCode, wParam, lParam);
         }
-
-
     }
 }

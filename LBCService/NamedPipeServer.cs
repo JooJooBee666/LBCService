@@ -88,6 +88,15 @@ namespace LBCService
                         case "LBC-DisableBacklight":
                             LenovoBacklightControl.BLC.ActivateBacklight(0);
                             break;
+                        case "LBC-UpdateConfigData":
+                            var currentBacklightPref = LenovoBacklightControl.BacklightPreference;
+                            LenovoBacklightControl.LoadConfig();
+                            if (currentBacklightPref != LenovoBacklightControl.BacklightPreference)
+                            {
+                                //backlight preference was changed, let's set it to the new value
+                                LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
+                            }
+                            break;
                     }
                 }
             }

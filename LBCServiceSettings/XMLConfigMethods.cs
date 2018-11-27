@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace LBCService
+namespace LBCServiceSettings
 {
     class XMLConfigMethods
     {
@@ -29,7 +29,8 @@ namespace LBCService
             {
                 var configXML = new XDocument(
                     new XElement("configuration",
-                        new XElement("Keyboard_Core_Path", KBCorePath),
+                        new XElement("Keyboard_Core_Path",
+                            @"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll"),
                         new XElement("Light_Level", LightLevel),
                         new XElement("Timeout_Preference", TimeoutPreference)
                     )
@@ -39,10 +40,9 @@ namespace LBCService
             }
             catch (Exception e)
             {
-                EventLog.WriteEntry("LenovoBacklightControl", $"Error creating config XML: {e.Message}",EventLogEntryType.Error, 50915);
+                EventLog.WriteEntry("LenovoBacklightControl", $"Error creating config XML: {e.Message}", EventLogEntryType.Error, 50915);
                 return false;
             }
-
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace LBCService
             //
             if (!System.IO.File.Exists(XMLPath))
             {
-                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll",2,300))
+                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll", 2, 300))
                 {
                     // if creation fails, return default values
                     return configData;
@@ -73,7 +73,7 @@ namespace LBCService
             }
 
             var xmlConfigDocument = new XmlDocument();
-            var TimeoutPreferenceFound = false;
+
             try
             {
                 xmlConfigDocument.Load(XMLPath);
@@ -89,14 +89,10 @@ namespace LBCService
                             break;
                         case "Timeout_Preference":
                             configData.Timeout_Preference = int.Parse(xmlElement.InnerText);
-                            TimeoutPreferenceFound = true;
                             break;
                     }
                 }
-                if (!TimeoutPreferenceFound)
-                {
-                    SaveConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300);
-                }
+
                 return configData;
             }
             catch (Exception e)
@@ -107,3 +103,4 @@ namespace LBCService
         }
     }
 }
+

@@ -35,7 +35,7 @@ namespace LBCService
                 EventLogEntryType.Information, 50901);
         }
 
-        private void LoadConfig()
+        public static void LoadConfig()
         {
             var configData = XMLConfigMethods.ReadConfigXML();
             BacklightPreference = configData.Light_Level;
