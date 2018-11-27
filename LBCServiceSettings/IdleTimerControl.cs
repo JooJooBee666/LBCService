@@ -53,16 +53,6 @@ namespace LBCServiceSettings
             IdleTimer.Enabled = true;
         }
 
-        public static void ResetTimer(int TimeOut)
-        {
-            IdleTimer.Stop();
-            IdleTimer.Dispose();
-            IdleTimer = new Timer(TimeOut * 1000);
-            IdleTimer.Elapsed += TimeoutReached;
-            IdleTimer.AutoReset = true;
-            IdleTimer.Enabled = true;
-        }
-
         /// <summary>
         /// Check the idle time and disable backlight if passed
         /// Re-enable if timer get's reset (i.e. user activity)
@@ -76,43 +66,6 @@ namespace LBCServiceSettings
                 t.Start();
                 BackLightOn = false;
             }
-        }
-
-        public static int IdleTime() //In seconds
-        {
-            LASTINPUTINFO lastinputinfo = new LASTINPUTINFO();
-            lastinputinfo.cbSize = (uint)Marshal.SizeOf(lastinputinfo);
-            GetLastInputInfo(ref lastinputinfo);
-            return (int)((((Environment.TickCount & int.MaxValue) - (lastinputinfo.dwTime & int.MaxValue)) & int.MaxValue) / 1000);
-        }
-
-        [DllImport("User32.dll")]
-        private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
-
-        [DllImport("Kernel32.dll")]
-        private static extern uint GetLastError();
-
-        public static uint GetIdleTime()
-        {
-            var lastInPut = new LASTINPUTINFO();
-            lastInPut.cbSize = (uint)Marshal.SizeOf(lastInPut);
-            GetLastInputInfo(ref lastInPut);
-
-            return ((uint)Environment.TickCount - lastInPut.dwTime);
-        }
-        /// <summary>
-        /// Get the Last input time in milliseconds
-        /// </summary>
-        /// <returns></returns>
-        public static long GetLastInputTime()
-        {
-            var lastInPut = new LASTINPUTINFO();
-            lastInPut.cbSize = (uint)Marshal.SizeOf(lastInPut);
-            if (!GetLastInputInfo(ref lastInPut))
-            {
-                throw new Exception(GetLastError().ToString());
-            }
-            return lastInPut.dwTime;
         }
     }
 }
