@@ -1,12 +1,11 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿
 using System.Threading;
 using System.Timers;
 using Timer = System.Timers.Timer;
 
 namespace LBCServiceSettings
 {
-    class IdleTimerControl
+    internal class IdleTimerControl
     {
         public static object ThreadLocker;
         public static Timer IdleTimer;
@@ -17,6 +16,9 @@ namespace LBCServiceSettings
             public uint dwTime;
         }
 
+        /// <summary>
+        /// Restarts the Idletimer and resets the interval (in case it has changed).
+        /// </summary>
         public static void RestartTimer()
         {
             IdleTimer.Stop();
@@ -41,7 +43,10 @@ namespace LBCServiceSettings
             BackLightOn = true;
             UserTimeout = TimeOut;
 
-            //enable mouse and Keyboard hooks
+            //
+            // Enable mouse and Keyboard hooks. We don't actually look to what was typed 
+            // or where the mouse, we just fire an event if there was any activity at all
+            //
             KeyboardHookClass.EnableKBHook();
             MouseHookClass.EnableMouseHook();
 
@@ -55,7 +60,7 @@ namespace LBCServiceSettings
 
         /// <summary>
         /// Check the idle time and disable backlight if passed
-        /// Re-enable if timer get's reset (i.e. user activity)
+        /// Re-enables if timer gets reset (i.e. user activity)
         /// </summary>
         public static void TimeoutReached(object source, ElapsedEventArgs e)
         {

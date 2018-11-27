@@ -1,17 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Windows.Forms.VisualStyles;
 using LBCServiceSettings.Properties;
-using Microsoft.Win32;
 
 namespace LBCServiceSettings
 {
-    class Systray
+    internal class Systray
     {
         public static NotifyIcon trayIcon;
 

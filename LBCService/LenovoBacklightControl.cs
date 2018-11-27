@@ -35,6 +35,10 @@ namespace LBCService
                 EventLogEntryType.Information, 50901);
         }
 
+
+        /// <summary>
+        /// Load config data from XML
+        /// </summary>
         public static void LoadConfig()
         {
             var configData = XMLConfigMethods.ReadConfigXML();

@@ -101,8 +101,11 @@ namespace LBCService
             public SYSTEM_POWER_STATE MinDeviceWakeState;
             public SYSTEM_POWER_STATE DefaultLowLatencyWake;
         }
-        //private static ServiceBase registeredService;
-
+        
+        /// <summary>
+        ///    Resgister's our service to receive events when the power state changes
+        /// </summary>
+        /// <param name="serviceBase"></param>
         internal static void RegisterServiceForPowerNotifications(ServiceBase serviceBase)
         {
             EventLog.WriteEntry("LenovoBacklightControl", "Registering Service for Power Notifications:" + serviceBase.ServiceName + ".", EventLogEntryType.Information, 50906);
@@ -133,6 +136,9 @@ namespace LBCService
 
         public static bool ConnectedStandby { get; private set; }
 
+        /// <summary>
+        ///    Unregisters our service from power events
+        /// </summary>
         public static void UnregisterFromPowerNotifications()
         {
 #if DEBUG
@@ -141,6 +147,13 @@ namespace LBCService
             var retVal = UnregisterPowerSettingNotification(hMonitorOn);
         }
 
+        /// <summary>
+        ///    Callback method used when power state changes and event is fired
+        /// </summary>
+        /// <param name="control"></param>
+        /// <param name="eventType"></param>
+        /// <param name="eventData"></param>
+        /// <param name="context"></param>
         private static void HandlerCallback(int control, int eventType, IntPtr eventData, IntPtr context)
         {
 #if def
@@ -187,6 +200,10 @@ namespace LBCService
             return IntPtr.Zero;
         }
 
+        /// <summary>
+        ///   Detect when system resumes from standy and enable the backlight
+        /// </summary>
+        /// <param name="powersetting"></param>
         private static void UpdateStandbyState(POWERBROADCAST_SETTING powersetting)
         {
             // When the display is on (1), you are exiting standby

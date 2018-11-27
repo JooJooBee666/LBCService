@@ -4,8 +4,6 @@ using System.IO;
 using System.IO.Pipes;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using System.Timers;
-
 
 namespace LBCService
 {
@@ -15,6 +13,9 @@ namespace LBCService
         public static int LastReportedIdleTime;
         private static NamedPipeServerStream PipeServer;
 
+        /// <summary>
+        ///   Public method to enable and start the name pipe server
+        /// </summary>
         public static void EnableNamedPipeServer()
         {
             ThreadLocker = new object();
@@ -22,7 +23,7 @@ namespace LBCService
         }
 
         /// <summary>
-        ///     Start a new pipe server
+        ///    Start a new pipe server
         /// </summary>
         private static void StartPipeServer()
         {
@@ -48,7 +49,7 @@ namespace LBCService
             //    pipeSecurity.AddAccessRule(accessRule);
             //}
 
-            // Create pipe and start the async connection waiting
+            // Create pipe
             PipeServer = new NamedPipeServerStream(
                 "LenovoBacklightControlPipe",
                 PipeDirection.In,
@@ -64,7 +65,7 @@ namespace LBCService
         }
 
         /// <summary>
-        ///     Function called when a client connects to the named pipe.
+        ///    Function called when a client connects to the named pipe.
         /// </summary>
         /// <param name="iAsyncResult"></param>
         private static void NamedPipeServerConnectionCallback(IAsyncResult iAsyncResult)
@@ -102,9 +103,9 @@ namespace LBCService
             }
             catch (ObjectDisposedException)
             {
-                // EndWaitForConnection will cause exception when someone closes the pipe before connection was made
-                // Don't create another pipe, just return
-                // Occurs when app is closing and the pipe is closed/disposed
+                // EndWaitForConnection will cause exception when someone closes the pipe before connection was made.
+                // Don't create another pipe, just return.
+                // Occurs when service is closing and the pipe is closed or disposed.
                 return;
             }
             catch (Exception e)
@@ -122,6 +123,9 @@ namespace LBCService
             StartPipeServer();
         }
 
+        /// <summary>
+        ///    Public dispose for the PipeServer
+        /// </summary>
         public static void StopNamedPipe()
         {
             PipeServer.Dispose();

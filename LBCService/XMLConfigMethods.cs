@@ -1,18 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 
 namespace LBCService
 {
-    class XMLConfigMethods
+    internal class XMLConfigMethods
     {
-        private static string XMLPath = AppDomain.CurrentDomain.BaseDirectory + "LCBServiceConfig.xml";
+        private static readonly string XMLPath = AppDomain.CurrentDomain.BaseDirectory + "LCBServiceConfig.xml";
 
+        /// <summary>
+        ///    Our config data structure/class we use to easily pass things along
+        /// </summary>
         public class ConfigData
         {
             public string Keyboard_Core_Path { get; set; }
@@ -21,7 +20,7 @@ namespace LBCService
         }
 
         /// <summary>
-        /// Create new Config XML with default values if not present 
+        ///    Create new Config XML with default values if not present 
         /// </summary>
         public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference)
         {
@@ -46,7 +45,7 @@ namespace LBCService
         }
 
         /// <summary>
-        /// Read Config XML data
+        ///    Read Config XML data
         /// </summary>
         public static ConfigData ReadConfigXML()
         {
@@ -73,7 +72,7 @@ namespace LBCService
             }
 
             var xmlConfigDocument = new XmlDocument();
-            var TimeoutPreferenceFound = false;
+            var timeoutPreferenceFound = false;
             try
             {
                 xmlConfigDocument.Load(XMLPath);
@@ -89,11 +88,11 @@ namespace LBCService
                             break;
                         case "Timeout_Preference":
                             configData.Timeout_Preference = int.Parse(xmlElement.InnerText);
-                            TimeoutPreferenceFound = true;
+                            timeoutPreferenceFound = true;
                             break;
                     }
                 }
-                if (!TimeoutPreferenceFound)
+                if (!timeoutPreferenceFound)
                 {
                     SaveConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300);
                 }
