@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -34,6 +37,7 @@ namespace LBCService
                     )
                 );
                 configXML.Save(XMLPath);
+                EnableFullControl(XMLPath);
                 return true;
             }
             catch (Exception e)
@@ -41,7 +45,6 @@ namespace LBCService
                 EventLog.WriteEntry("LenovoBacklightControl", $"Error creating config XML: {e.Message}",EventLogEntryType.Error, 50915);
                 return false;
             }
-
         }
 
         /// <summary>
@@ -103,6 +106,23 @@ namespace LBCService
                 EventLog.WriteEntry("LenovoBacklightControl", $"Error reading config XML: {e.Message}", EventLogEntryType.Error, 50915);
                 return configData;
             }
+        }
+
+        public static void EnableFullControl(string fileName)
+        {
+            // Read the current ACL permission for the file
+            var fileSecurity = File.GetAccessControl(fileName);
+
+            // Create a new rule set based on "Everyone"
+            var fileAccessRule = new FileSystemAccessRule(new NTAccount("", "Everyone"),
+                FileSystemRights.FullControl,
+                AccessControlType.Allow);
+
+            // Append the new rule set to the file
+            fileSecurity.AddAccessRule(fileAccessRule);
+
+            // Save it to the file system
+            File.SetAccessControl(fileName, fileSecurity);
         }
     }
 }
