@@ -261,3 +261,4 @@ __pycache__/
 *.pyc
 /nsis.nsi
 /InnoSetup.iss
+/Output

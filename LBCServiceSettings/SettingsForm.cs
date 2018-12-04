@@ -123,7 +123,7 @@ namespace LBCServiceSettings
                 client.Dispose();
             }
             catch (Exception e)
-            {
+            {                
                 //Not implemented
             }
         }
