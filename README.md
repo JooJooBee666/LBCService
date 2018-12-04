@@ -2,8 +2,7 @@
 
 It will ensure the keyboard backlight is on after boot and also turn it back on after the system comes out of a standby.
 
-For now, there is no installer but you can manually install using the following elevated command:
-C:\Windows\Microsoft.NET\Framework\v4.0.30319\installutil.exe "path\to\LBCService.exe"
+Run the "LBCServiceInstaller.exe" to install.  This is included on the latest release (1.2.0.0 as of now).
 
 NOTE: This was only tested using the LOCAL SYSTEM account for the service log on account.
 
@@ -12,7 +11,6 @@ Keyboard_Core.dll can be specified/changed here, as well as the preferred bright
 timeout which is only used by the "LCBServiceSettings.exe" application.  This runs as a system tray icon that
 can monitor user activity and will send enable/disable the backlight as preferred.
 
-Run the "LBCServiceInstaller.exe" to install.  This is included on the latest release (1.2.0.0 as of now).
 
 Credits:
 This program was written using the work of liguis- here: https://github.com/ligius-/lenovo-backlight-control/
