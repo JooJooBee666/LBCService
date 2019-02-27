@@ -110,8 +110,9 @@ namespace LBCService
             }
             catch (Exception e)
             {
-                EventLog.WriteEntry("LenovoBacklightControl", $"Problem parsing pipe data. Error:{e.Message}",
-                    EventLogEntryType.Error, 50915);
+                var error = $"Problem parsing pipe data. Error:{e.Message}";
+                EventLog.WriteEntry("LenovoBacklightControl", error, EventLogEntryType.Error, 50915);
+                LenovoBacklightControl.WriteToDebugLog(error);
             }
             finally
             {

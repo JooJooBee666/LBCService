@@ -20,12 +20,13 @@ namespace LBCService
             public string Keyboard_Core_Path { get; set; }
             public int Light_Level { get; set; }
             public int Timeout_Preference { get; set; }
+            public bool EnableDebugLog { get; set; }
         }
 
         /// <summary>
         ///    Create new Config XML with default values if not present 
         /// </summary>
-        public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference)
+        public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference, bool EnableDebugMode)
         {
             try
             {
@@ -33,7 +34,8 @@ namespace LBCService
                     new XElement("configuration",
                         new XElement("Keyboard_Core_Path", KBCorePath),
                         new XElement("Light_Level", LightLevel),
-                        new XElement("Timeout_Preference", TimeoutPreference)
+                        new XElement("Timeout_Preference", TimeoutPreference),
+                        new XElement("Enable_Debug_Log", EnableDebugMode)
                     )
                 );
                 configXML.Save(XMLPath);
@@ -42,7 +44,9 @@ namespace LBCService
             }
             catch (Exception e)
             {
-                EventLog.WriteEntry("LenovoBacklightControl", $"Error creating config XML: {e.Message}",EventLogEntryType.Error, 50915);
+                var error = $"Error creating config XML: {e.Message}";
+                EventLog.WriteEntry("LenovoBacklightControl", error ,EventLogEntryType.Error, 50915);
+                LenovoBacklightControl.WriteToDebugLog(error);
                 return false;
             }
         }
@@ -65,9 +69,9 @@ namespace LBCService
             //
             // If config file is not found, create one
             //
-            if (!System.IO.File.Exists(XMLPath))
+            if (!File.Exists(XMLPath))
             {
-                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll",2,300))
+                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll",2,300,false))
                 {
                     // if creation fails, return default values
                     return configData;
@@ -76,6 +80,7 @@ namespace LBCService
 
             var xmlConfigDocument = new XmlDocument();
             var timeoutPreferenceFound = false;
+            var enableDebugLog = false;
             try
             {
                 xmlConfigDocument.Load(XMLPath);
@@ -93,17 +98,25 @@ namespace LBCService
                             configData.Timeout_Preference = int.Parse(xmlElement.InnerText);
                             timeoutPreferenceFound = true;
                             break;
+                        case "Enable_Debug_Log":
+                            configData.EnableDebugLog = bool.Parse(xmlElement.InnerText);
+                            enableDebugLog = true;
+                            LenovoBacklightControl.EnableDebugLog = true;
+                            LenovoBacklightControl.WriteToDebugLog("Debug Logging Enabled.");
+                            break;
                     }
                 }
                 if (!timeoutPreferenceFound)
                 {
-                    SaveConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300);
+                    SaveConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300, enableDebugLog);
                 }
                 return configData;
             }
             catch (Exception e)
             {
-                EventLog.WriteEntry("LenovoBacklightControl", $"Error reading config XML: {e.Message}", EventLogEntryType.Error, 50915);
+                var error = $"Error reading config XML: {e.Message}";
+                EventLog.WriteEntry("LenovoBacklightControl", error, EventLogEntryType.Error, 50915);
+                LenovoBacklightControl.WriteToDebugLog(error);
                 return configData;
             }
         }

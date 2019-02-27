@@ -2,7 +2,7 @@
 
 It will ensure the keyboard backlight is on after boot and also turn it back on after the system comes out of a standby.
 
-Run the "LBCServiceInstaller.exe" to install.  This is included on the latest release (1.2.0.0 as of now).
+Run the "LBCServiceInstaller.exe" to install.  This is included on the latest release (1.3.0.0 as of now).
 
 NOTE: This was only tested using the LOCAL SYSTEM account for the service log on account.
 

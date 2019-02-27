@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.ServiceProcess;
 using System.Threading;
 
@@ -13,11 +15,14 @@ namespace LBCService
         public static string KBCorePath;
         Thread NamedPipeThread;
         public static AutoResetEvent StopRequest = new AutoResetEvent(false);
+        public static string DebugLogPath;
+        public static bool EnableDebugLog;
 
         public LenovoBacklightControl()
         {
             InitializeComponent();
             DebugMode();
+            DebugLogPath = AppDomain.CurrentDomain.BaseDirectory + "DebugLog.txt";
             BLC = new BacklightControls();
             LoadConfig();
             LBCServiceBase = this;
@@ -29,10 +34,20 @@ namespace LBCService
             //
             if (!EventLog.SourceExists("LenovoBacklightControl"))
             {
-                EventLog.CreateEventSource("LenovoBacklightControl", "System");
+                try
+                {
+                    EventLog.CreateEventSource("LenovoBacklightControl", "System");
+                }
+                catch (Exception e)
+                {
+                    var error = $"Error creating DebugLogFile at {DebugLogPath}. {e.Message}";
+                    EventLog.WriteEntry("LenovoBacklightControl", error , EventLogEntryType.Information, 50920);
+                    WriteToDebugLog(error);
+                }
+
             }
-            EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service starting...",
-                EventLogEntryType.Information, 50901);
+            EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service starting...", EventLogEntryType.Information, 50901);
+            WriteToDebugLog("LenovoBacklightControl service starting...");
         }
 
 
@@ -46,10 +61,52 @@ namespace LBCService
             KBCorePath = configData.Keyboard_Core_Path;
         }
 
+        /// <summary>
+        /// Write to debug file if enabled
+        /// </summary>
+        /// <param name="message">The message to write to the debug file.</param>
+        public static void WriteToDebugLog(string message)
+        {
+            //
+            // Return if debug option is not enabled
+            //
+            if (!EnableDebugLog) return;
+
+            //
+            // Create Debug File if it doesn't exists
+            //
+            if (!File.Exists(DebugLogPath))
+            {
+                try
+                {
+                    File.Create(DebugLogPath).Dispose();
+                }
+                catch (Exception e)
+                {
+                    EventLog.WriteEntry("LenovoBacklightControl", $"Error creating DebugLogFile at {DebugLogPath}. {e.Message}", EventLogEntryType.Information, 50920);
+                }
+            }
+
+            var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            try
+            {
+                using (StreamWriter sw = File.AppendText(DebugLogPath))
+                {
+                    sw.WriteLine($"{date} - {message}");
+                }
+            }
+            catch (Exception e)
+            {
+                // Don't want to abot everything if this fails.
+                Console.WriteLine(e);
+            }
+
+        }
+
         protected override void OnStart(string[] args)
         {
-            EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.",
-                EventLogEntryType.Information, 50902);
+            EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.", EventLogEntryType.Information, 50902);
+            WriteToDebugLog("LenovoBacklightControl service started.");
             PowerMethods.RegisterServiceForPowerNotifications(this);
             NamedPipeThread = new Thread(NamedPipeServer.EnableNamedPipeServer);
             NamedPipeThread.Start();
@@ -65,6 +122,7 @@ namespace LBCService
         {
             //EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service stopping....", EventLogEntryType.Information, 50903);
             //StopRequest.Set();
+            WriteToDebugLog("LenovoBacklightControl service stopped");
             NamedPipeServer.StopNamedPipe();
             NamedPipeThread.Join();
         }

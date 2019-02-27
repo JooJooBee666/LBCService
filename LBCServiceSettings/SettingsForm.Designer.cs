@@ -42,6 +42,7 @@
             this.label3 = new System.Windows.Forms.Label();
             this.saveButton = new System.Windows.Forms.Button();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.enableDebugLogging = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.timeoutUpDown)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -90,7 +91,7 @@
             // radioHigh
             // 
             this.radioHigh.AutoSize = true;
-            this.radioHigh.Location = new System.Drawing.Point(260, 25);
+            this.radioHigh.Location = new System.Drawing.Point(240, 26);
             this.radioHigh.Name = "radioHigh";
             this.radioHigh.Size = new System.Drawing.Size(67, 24);
             this.radioHigh.TabIndex = 1;
@@ -123,7 +124,7 @@
             // 
             this.groupBox2.Controls.Add(this.statusTextBox);
             this.groupBox2.Controls.Add(this.label2);
-            this.groupBox2.Location = new System.Drawing.Point(447, 57);
+            this.groupBox2.Location = new System.Drawing.Point(447, 47);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(341, 91);
             this.groupBox2.TabIndex = 6;
@@ -173,11 +174,23 @@
             // 
             this.openFileDialog.InitialDirectory = "C:\\";
             // 
+            // enableDebugLogging
+            // 
+            this.enableDebugLogging.AutoSize = true;
+            this.enableDebugLogging.Location = new System.Drawing.Point(447, 178);
+            this.enableDebugLogging.Name = "enableDebugLogging";
+            this.enableDebugLogging.Size = new System.Drawing.Size(198, 24);
+            this.enableDebugLogging.TabIndex = 9;
+            this.enableDebugLogging.Text = "Enable Debug Logging";
+            this.enableDebugLogging.UseVisualStyleBackColor = true;
+            this.enableDebugLogging.CheckedChanged += new System.EventHandler(this.enableDebugLogging_CheckedChanged);
+            // 
             // SettingsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 229);
+            this.Controls.Add(this.enableDebugLogging);
             this.Controls.Add(this.saveButton);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.groupBox2);
@@ -217,6 +230,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button saveButton;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
+        private System.Windows.Forms.CheckBox enableDebugLogging;
     }
 }
 

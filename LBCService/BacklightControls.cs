@@ -11,12 +11,25 @@ namespace LBCService
         {
             if (System.IO.File.Exists(LenovoBacklightControl.KBCorePath))
             {
-                Keyboard_Core =
-                    Assembly.LoadFile(LenovoBacklightControl.KBCorePath);
+                try
+                {
+                    Keyboard_Core = Assembly.LoadFile(LenovoBacklightControl.KBCorePath);
+                }
+                catch (Exception e)
+                {
+                    var error = $"Unable to load Keyboard_Core.dll.  Service will stop.  Error: {e.Message}";
+                    EventLog.WriteEntry("LenovoBacklightControl", error, EventLogEntryType.Error, 50903);
+                    LenovoBacklightControl.WriteToDebugLog(error);
+                    LenovoBacklightControl.LBCServiceBase.Stop();
+                    return;
+                }
+
             }
             else
             {
-                EventLog.WriteEntry("LenovoBacklightControl", "Unable to load Keyboard_Core.dll.  Service will stop.", EventLogEntryType.Error, 50903);
+                const string error = "Unable to load Keyboard_Core.dll. Service will stop.";
+                EventLog.WriteEntry("LenovoBacklightControl", error, EventLogEntryType.Error, 50903);
+                LenovoBacklightControl.WriteToDebugLog(error);
                 LenovoBacklightControl.LBCServiceBase.Stop();
                 return;
             }

@@ -15,7 +15,7 @@ namespace LBCServiceSettings
         private static Thread CheckServiceThread;
         private static bool StopThread;
         private static SynchronizationContext ctx;
-
+        public static bool EnableDebugLogging;
         public SettingsForm()
         {
             InitializeComponent();
@@ -49,6 +49,7 @@ namespace LBCServiceSettings
             var kbCoreParent = file_info.DirectoryName;
             openFileDialog.InitialDirectory = kbCoreParent;
             IdleTimerControl.SetTimer(configData.Timeout_Preference);
+            enableDebugLogging.Checked = EnableDebugLogging;
         }
 
         public static void ShowSettingsForm()
@@ -82,13 +83,17 @@ namespace LBCServiceSettings
                 keyboardCorePathText.Text = openFileDialog.FileName;
             }
         }
+        private void enableDebugLogging_CheckedChanged(object sender, EventArgs e)
+        {
+            EnableDebugLogging = enableDebugLogging.Checked;
+        }
 
         private void saveButton_Click(object sender, EventArgs e)
         {
             if (File.Exists(keyboardCorePathText.Text))
             {
                 if (XMLConfigMethods.SaveConfigXML(keyboardCorePathText.Text, radioLow.Checked ? 1 : 2,
-                    (int)timeoutUpDown.Value))
+                    (int)timeoutUpDown.Value, EnableDebugLogging))
                 {
                     // Send message to the service to reload the backlight value
                     var t = new Thread(() => LBCServiceUpdateNotify("LBC-UpdateConfigData"));
@@ -233,5 +238,6 @@ namespace LBCServiceSettings
                 Thread.Sleep(500);
             }
         }
+
     }
 }

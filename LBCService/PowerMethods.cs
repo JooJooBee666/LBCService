@@ -144,6 +144,7 @@ namespace LBCService
 #if DEBUG
             EventLog.WriteEntry("LenovoBacklightControl", "Unregistering from Power Notifications.", EventLogEntryType.Information, 50906);
 #endif
+            LenovoBacklightControl.WriteToDebugLog("Unregistering from Power Notifications.");
             var retVal = UnregisterPowerSettingNotification(hMonitorOn);
         }
 
@@ -159,6 +160,9 @@ namespace LBCService
 #if def
             EventLog.WriteEntry("LenovoBacklightControl", $"HandlerCallback(control:{control}, eventType:{eventType}, eventData:{eventData}, context: {context})", EventLogEntryType.Information, 50906);
 #endif
+            LenovoBacklightControl.WriteToDebugLog(
+                $"HandlerCallback(control:{control}, eventType:{eventType}, eventData:{eventData}, context: {context})");
+
             if (control == SERVICE_CONTROL_POWEREVENT)
             {
                 if (eventData == null) return;
@@ -176,6 +180,7 @@ namespace LBCService
 #if DEBUG
                     EventLog.WriteEntry("LenovoBacklightControl", "ERROR: powersetting == null",EventLogEntryType.Error, 50906);
 #endif
+                    LenovoBacklightControl.WriteToDebugLog("ERROR: powersetting == null");
                 }
             }
             else if (control == SERVICE_CONTROL_STOP)
@@ -183,6 +188,7 @@ namespace LBCService
 #if DEBUG
                 EventLog.WriteEntry("LenovoBacklightControl", "SERVICE_CONTROL_STOP received.", EventLogEntryType.Information, 50906);
 #endif
+                LenovoBacklightControl.WriteToDebugLog("SERVICE_CONTROL_STOP received.");
                 UnregisterFromPowerNotifications();
                 LenovoBacklightControl.LBCServiceBase.Stop();
             }
@@ -209,8 +215,9 @@ namespace LBCService
             // When the display is on (1), you are exiting standby
             if (powersetting.Data == 0) return;
 #if DEBUG
-            EventLog.WriteEntry("LenovoBacklightControl", "Detected system resume.  Activating backlight.", EventLogEntryType.Information, 50905);
+            EventLog.WriteEntry("LenovoBacklightControl", "Activating backlight.", EventLogEntryType.Information, 50905);
 #endif
+            LenovoBacklightControl.WriteToDebugLog("Detected system resume.  Activating backlight.");
             LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
             ConnectedStandby = false;
         }
