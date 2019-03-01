@@ -15,7 +15,8 @@ namespace LBCServiceSettings
         private static Thread CheckServiceThread;
         private static bool StopThread;
         private static SynchronizationContext ctx;
-        public static bool EnableDebugLogging;
+        private static Thread NamedPipeThread;
+
         public SettingsForm()
         {
             InitializeComponent();
@@ -39,6 +40,8 @@ namespace LBCServiceSettings
             Callback = this;
             Callback.ShowInTaskbar = false;
             Callback.Opacity = 0;
+            NamedPipeThread = new Thread(NamedPipeServer.EnableNamedPipeServer);
+            NamedPipeThread.Start();
         }
 
         private void SettingsForm_Load(object sender, EventArgs e)
@@ -49,7 +52,8 @@ namespace LBCServiceSettings
             var kbCoreParent = file_info.DirectoryName;
             openFileDialog.InitialDirectory = kbCoreParent;
             IdleTimerControl.SetTimer(configData.Timeout_Preference);
-            enableDebugLogging.Checked = EnableDebugLogging;
+            enableDebugLoggingCheck.Checked = configData.Enable_Debug_Log;
+            wakeStateCheck.Checked = configData.Save_Backlight_State;
         }
 
         public static void ShowSettingsForm()
@@ -83,17 +87,13 @@ namespace LBCServiceSettings
                 keyboardCorePathText.Text = openFileDialog.FileName;
             }
         }
-        private void enableDebugLogging_CheckedChanged(object sender, EventArgs e)
-        {
-            EnableDebugLogging = enableDebugLogging.Checked;
-        }
 
         private void saveButton_Click(object sender, EventArgs e)
         {
             if (File.Exists(keyboardCorePathText.Text))
             {
                 if (XMLConfigMethods.SaveConfigXML(keyboardCorePathText.Text, radioLow.Checked ? 1 : 2,
-                    (int)timeoutUpDown.Value, EnableDebugLogging))
+                    (int)timeoutUpDown.Value, enableDebugLoggingCheck.Checked, wakeStateCheck.Checked))
                 {
                     // Send message to the service to reload the backlight value
                     var t = new Thread(() => LBCServiceUpdateNotify("LBC-UpdateConfigData"));
@@ -101,6 +101,8 @@ namespace LBCServiceSettings
                     configData.Timeout_Preference = (int)timeoutUpDown.Value;
                     configData.Light_Level = radioLow.Checked ? 1 : 2;
                     configData.Keyboard_Core_Path = keyboardCorePathText.Text;
+                    configData.Enable_Debug_Log = enableDebugLoggingCheck.Checked;
+                    configData.Save_Backlight_State = wakeStateCheck.Checked;
                     IdleTimerControl.UserTimeout = configData.Timeout_Preference;
                     IdleTimerControl.RestartTimer();
                 }
@@ -116,7 +118,7 @@ namespace LBCServiceSettings
         /// Send given message to the named pipe for the service
         /// </summary>
         /// <param name="message"></param>
-        public static void LBCServiceUpdateNotify(string message)
+        public static void  LBCServiceUpdateNotify(string message)
         {
             try
             {
@@ -143,6 +145,8 @@ namespace LBCServiceSettings
             e.Cancel = true;
             //assuming you want the close-button to only hide the form, 
             //and are overriding the form's OnFormClosing method:
+            NamedPipeServer.StopNamedPipe();
+            NamedPipeThread.Join();
             HideSettingsForm();
         }
 
@@ -238,6 +242,5 @@ namespace LBCServiceSettings
                 Thread.Sleep(500);
             }
         }
-
     }
 }

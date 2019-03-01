@@ -21,12 +21,13 @@ namespace LBCService
             public int Light_Level { get; set; }
             public int Timeout_Preference { get; set; }
             public bool EnableDebugLog { get; set; }
+            public bool Save_Backlight_State { get; set; }
         }
 
         /// <summary>
         ///    Create new Config XML with default values if not present 
         /// </summary>
-        public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference, bool EnableDebugMode)
+        public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference, bool EnableDebugMode, bool SaveBacklightState)
         {
             try
             {
@@ -35,7 +36,8 @@ namespace LBCService
                         new XElement("Keyboard_Core_Path", KBCorePath),
                         new XElement("Light_Level", LightLevel),
                         new XElement("Timeout_Preference", TimeoutPreference),
-                        new XElement("Enable_Debug_Log", EnableDebugMode)
+                        new XElement("Enable_Debug_Log", EnableDebugMode),
+                        new XElement("Save_Backlight_State", SaveBacklightState)
                     )
                 );
                 configXML.Save(XMLPath);
@@ -71,7 +73,7 @@ namespace LBCService
             //
             if (!File.Exists(XMLPath))
             {
-                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll",2,300,false))
+                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll",2,300,false, false))
                 {
                     // if creation fails, return default values
                     return configData;
@@ -80,7 +82,7 @@ namespace LBCService
 
             var xmlConfigDocument = new XmlDocument();
             var timeoutPreferenceFound = false;
-            var enableDebugLog = false;
+
             try
             {
                 xmlConfigDocument.Load(XMLPath);
@@ -100,15 +102,18 @@ namespace LBCService
                             break;
                         case "Enable_Debug_Log":
                             configData.EnableDebugLog = bool.Parse(xmlElement.InnerText);
-                            enableDebugLog = true;
-                            LenovoBacklightControl.EnableDebugLog = true;
+                            LenovoBacklightControl.EnableDebugLog = configData.EnableDebugLog;
                             LenovoBacklightControl.WriteToDebugLog("Debug Logging Enabled.");
+                            break;
+                        case "Save_Backlight_State":
+                            configData.Save_Backlight_State = bool.Parse(xmlElement.InnerText);
+                            LenovoBacklightControl.SaveBacklightState = configData.Save_Backlight_State;
                             break;
                     }
                 }
                 if (!timeoutPreferenceFound)
                 {
-                    SaveConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300, enableDebugLog);
+                    SaveConfigXML(configData.Keyboard_Core_Path, configData.Light_Level, 300, LenovoBacklightControl.EnableDebugLog, LenovoBacklightControl.SaveBacklightState);
                 }
                 return configData;
             }

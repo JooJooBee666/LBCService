@@ -42,7 +42,8 @@
             this.label3 = new System.Windows.Forms.Label();
             this.saveButton = new System.Windows.Forms.Button();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.enableDebugLogging = new System.Windows.Forms.CheckBox();
+            this.enableDebugLoggingCheck = new System.Windows.Forms.CheckBox();
+            this.wakeStateCheck = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.timeoutUpDown)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -81,9 +82,9 @@
             // 
             this.groupBox1.Controls.Add(this.radioHigh);
             this.groupBox1.Controls.Add(this.radioLow);
-            this.groupBox1.Location = new System.Drawing.Point(13, 152);
+            this.groupBox1.Location = new System.Drawing.Point(333, 150);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(392, 64);
+            this.groupBox1.Size = new System.Drawing.Size(241, 60);
             this.groupBox1.TabIndex = 4;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Default Brightness Level";
@@ -91,7 +92,7 @@
             // radioHigh
             // 
             this.radioHigh.AutoSize = true;
-            this.radioHigh.Location = new System.Drawing.Point(240, 26);
+            this.radioHigh.Location = new System.Drawing.Point(143, 25);
             this.radioHigh.Name = "radioHigh";
             this.radioHigh.Size = new System.Drawing.Size(67, 24);
             this.radioHigh.TabIndex = 1;
@@ -162,7 +163,7 @@
             // 
             // saveButton
             // 
-            this.saveButton.Location = new System.Drawing.Point(657, 167);
+            this.saveButton.Location = new System.Drawing.Point(648, 160);
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(131, 50);
             this.saveButton.TabIndex = 8;
@@ -174,23 +175,33 @@
             // 
             this.openFileDialog.InitialDirectory = "C:\\";
             // 
-            // enableDebugLogging
+            // enableDebugLoggingCheck
             // 
-            this.enableDebugLogging.AutoSize = true;
-            this.enableDebugLogging.Location = new System.Drawing.Point(447, 178);
-            this.enableDebugLogging.Name = "enableDebugLogging";
-            this.enableDebugLogging.Size = new System.Drawing.Size(198, 24);
-            this.enableDebugLogging.TabIndex = 9;
-            this.enableDebugLogging.Text = "Enable Debug Logging";
-            this.enableDebugLogging.UseVisualStyleBackColor = true;
-            this.enableDebugLogging.CheckedChanged += new System.EventHandler(this.enableDebugLogging_CheckedChanged);
+            this.enableDebugLoggingCheck.AutoSize = true;
+            this.enableDebugLoggingCheck.Location = new System.Drawing.Point(14, 150);
+            this.enableDebugLoggingCheck.Name = "enableDebugLoggingCheck";
+            this.enableDebugLoggingCheck.Size = new System.Drawing.Size(198, 24);
+            this.enableDebugLoggingCheck.TabIndex = 9;
+            this.enableDebugLoggingCheck.Text = "Enable Debug Logging";
+            this.enableDebugLoggingCheck.UseVisualStyleBackColor = true;
+            // 
+            // wakeStateCheck
+            // 
+            this.wakeStateCheck.AutoSize = true;
+            this.wakeStateCheck.Location = new System.Drawing.Point(13, 186);
+            this.wakeStateCheck.Name = "wakeStateCheck";
+            this.wakeStateCheck.Size = new System.Drawing.Size(271, 24);
+            this.wakeStateCheck.TabIndex = 10;
+            this.wakeStateCheck.Text = "Remeber backlight state on wake";
+            this.wakeStateCheck.UseVisualStyleBackColor = true;
             // 
             // SettingsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 229);
-            this.Controls.Add(this.enableDebugLogging);
+            this.ClientSize = new System.Drawing.Size(800, 221);
+            this.Controls.Add(this.wakeStateCheck);
+            this.Controls.Add(this.enableDebugLoggingCheck);
             this.Controls.Add(this.saveButton);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.groupBox2);
@@ -230,7 +241,8 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button saveButton;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
-        private System.Windows.Forms.CheckBox enableDebugLogging;
+        private System.Windows.Forms.CheckBox enableDebugLoggingCheck;
+        private System.Windows.Forms.CheckBox wakeStateCheck;
     }
 }
 

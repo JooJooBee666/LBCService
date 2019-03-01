@@ -51,7 +51,7 @@ namespace LBCServiceSettings
 
         private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode < 0 || wParam != (IntPtr) WM_KEYDOWN)
+             if (nCode < 0 || wParam != (IntPtr) WM_KEYDOWN)
                 return CallNextHookEx(KeyboardHookID, nCode, wParam, lParam);
 
             // Keyboard input detected, restart the idle timer and enable the KB 

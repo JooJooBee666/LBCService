@@ -40,6 +40,10 @@ namespace LBCServiceSettings
         public static void SetTimer(int TimeOut)
         {
             ThreadLocker = new object();
+
+            // Send the message to enable the backlight using a thread
+            var t = new Thread(() => SettingsForm.LBCServiceUpdateNotify("LBC-EnableBacklight"));
+            t.Start();
             BackLightOn = true;
             UserTimeout = TimeOut;
 

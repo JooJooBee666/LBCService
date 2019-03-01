@@ -14,13 +14,14 @@ namespace LBCServiceSettings
             public string Keyboard_Core_Path { get; set; }
             public int Light_Level { get; set; }
             public int Timeout_Preference { get; set; }
-            public bool EnableDebugLog { get; set; }
+            public bool Enable_Debug_Log { get; set; }
+            public bool Save_Backlight_State { get; set; }
         }
 
         /// <summary>
         /// Create new Config XML with default values if not present 
         /// </summary>
-        public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference, bool EnableDebugMode)
+        public static bool SaveConfigXML(string KBCorePath, int LightLevel, int TimeoutPreference, bool EnableDebugMode, bool SaveBacklightState)
         {
             try
             {
@@ -30,7 +31,8 @@ namespace LBCServiceSettings
                             @"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll"),
                         new XElement("Light_Level", LightLevel),
                         new XElement("Timeout_Preference", TimeoutPreference),
-                        new XElement("Enable_Debug_Log", EnableDebugMode)
+                        new XElement("Enable_Debug_Log", EnableDebugMode),
+                        new XElement("Save_Backlight_State", SaveBacklightState)
                     )
                 );
                 configXML.Save(XMLPath);
@@ -63,7 +65,7 @@ namespace LBCServiceSettings
             //
             if (!System.IO.File.Exists(XMLPath))
             {
-                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll", 2, 300, false))
+                if (!SaveConfigXML(@"C:\ProgramData\Lenovo\ImController\Plugins\ThinkKeyboardPlugin\x86\Keyboard_Core.dll", 2, 300, false, false))
                 {
                     // if creation fails, return default values
                     return configData;
@@ -89,8 +91,10 @@ namespace LBCServiceSettings
                             configData.Timeout_Preference = int.Parse(xmlElement.InnerText);
                             break;
                         case "Enable_Debug_Log":
-                            configData.EnableDebugLog = bool.Parse(xmlElement.InnerText);
-                            SettingsForm.EnableDebugLogging = true;
+                            configData.Enable_Debug_Log = bool.Parse(xmlElement.InnerText);
+                            break;
+                        case "Save_Backlight_State":
+                            configData.Save_Backlight_State = bool.Parse(xmlElement.InnerText);
                             break;
                     }
                 }

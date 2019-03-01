@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
+using System.Threading;
 
 namespace LBCService
 {
@@ -108,7 +111,9 @@ namespace LBCService
         /// <param name="serviceBase"></param>
         internal static void RegisterServiceForPowerNotifications(ServiceBase serviceBase)
         {
-            EventLog.WriteEntry("LenovoBacklightControl", "Registering Service for Power Notifications:" + serviceBase.ServiceName + ".", EventLogEntryType.Information, 50906);
+            var message = $"Registering Service for Power Notifications:{serviceBase.ServiceName}.";
+            EventLog.WriteEntry("LenovoBacklightControl",message , EventLogEntryType.Information, 50906);
+            LenovoBacklightControl.WriteToDebugLog(message);
             var serviceStatusHandle = RegisterServiceCtrlHandlerEx(serviceBase.ServiceName, HandlerCallback, IntPtr.Zero);
 
             hMonitorOn = RegisterPowerSettingNotification(serviceStatusHandle, ref GUID_MONITOR_POWER_ON, DEVICE_NOTIFY_SERVICE_HANDLE);
@@ -213,12 +218,37 @@ namespace LBCService
         private static void UpdateStandbyState(POWERBROADCAST_SETTING powersetting)
         {
             // When the display is on (1), you are exiting standby
-            if (powersetting.Data == 0) return;
+            if (powersetting.Data == 0 || LenovoBacklightControl.SaveBacklightState)
+            {
+                LenovoBacklightControl.WriteToDebugLog("Detected system resume but backlight state option enabled, not activating.");
+                return;
+            }
 #if DEBUG
             EventLog.WriteEntry("LenovoBacklightControl", "Activating backlight.", EventLogEntryType.Information, 50905);
 #endif
             LenovoBacklightControl.WriteToDebugLog("Detected system resume.  Activating backlight.");
             LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
+            //
+            // Notify the settings app that the service started the backlight on it's own
+            //
+            try
+            {
+                var client = new NamedPipeClientStream(".", "LBCSettingsNamedPipe", PipeDirection.Out);
+                client.Connect();
+                var writer = new StreamWriter(client);
+                writer.WriteLine("LBCSettings-BackLightWasEnabledByPower");
+                writer.Flush();
+                client.Dispose();
+            }
+            catch (Exception e)
+            {
+                var message = $"Error sending status update to LBCSettings app. Error: {e.Message}";
+#if DEBUG
+                EventLog.WriteEntry("LenovoBacklightControl", message, EventLogEntryType.Information, 50905);
+#endif
+                LenovoBacklightControl.WriteToDebugLog(message);
+                LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
+            }
             ConnectedStandby = false;
         }
     }

@@ -13,10 +13,11 @@ namespace LBCService
         public static ServiceBase LBCServiceBase;
         public static int UserTimeoutPreference;
         public static string KBCorePath;
-        Thread NamedPipeThread;
+        private static Thread NamedPipeThread;
         public static AutoResetEvent StopRequest = new AutoResetEvent(false);
         public static string DebugLogPath;
         public static bool EnableDebugLog;
+        public static bool SaveBacklightState;
 
         public LenovoBacklightControl()
         {
