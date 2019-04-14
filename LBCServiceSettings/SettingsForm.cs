@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Pipes;
@@ -34,6 +35,22 @@ namespace LBCServiceSettings
                 MessageBox.Show("Could not find service.  Please install.", "Service Error!", MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
+            //
+            // Register Event log source if it is not already
+            //
+            if (!EventLog.SourceExists("LenovoBacklightControl"))
+            {
+                try
+                {
+                    EventLog.CreateEventSource("LenovoBacklightControl", "System");
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show($"Unabled to register event log source. Event logging will be disabled. Error: {e.Message}",
+                                    "Event log error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+
             openFileDialog.Title = "Browse for Keyboard_Core.dll";
             openFileDialog.DefaultExt = "dll";
             openFileDialog.CheckFileExists = true;
@@ -51,7 +68,7 @@ namespace LBCServiceSettings
             var file_info = new FileInfo(configData.Keyboard_Core_Path);
             var kbCoreParent = file_info.DirectoryName;
             openFileDialog.InitialDirectory = kbCoreParent;
-            IdleTimerControl.SetTimer(configData.Timeout_Preference);
+            if (configData.Timeout_Preference > 0) IdleTimerControl.SetTimer(configData.Timeout_Preference);
             enableDebugLoggingCheck.Checked = configData.Enable_Debug_Log;
             wakeStateCheck.Checked = configData.Save_Backlight_State;
         }
@@ -103,8 +120,11 @@ namespace LBCServiceSettings
                     configData.Keyboard_Core_Path = keyboardCorePathText.Text;
                     configData.Enable_Debug_Log = enableDebugLoggingCheck.Checked;
                     configData.Save_Backlight_State = wakeStateCheck.Checked;
-                    IdleTimerControl.UserTimeout = configData.Timeout_Preference;
-                    IdleTimerControl.RestartTimer();
+                    if (configData.Timeout_Preference > 0)
+                    {
+                        IdleTimerControl.UserTimeout = configData.Timeout_Preference;
+                        IdleTimerControl.RestartTimer();
+                    }
                 }
             }
             else

@@ -42,10 +42,8 @@ namespace LBCService
                 catch (Exception e)
                 {
                     var error = $"Error creating DebugLogFile at {DebugLogPath}. {e.Message}";
-                    EventLog.WriteEntry("LenovoBacklightControl", error , EventLogEntryType.Information, 50920);
                     WriteToDebugLog(error);
                 }
-
             }
             EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service starting...", EventLogEntryType.Information, 50901);
             WriteToDebugLog("LenovoBacklightControl service starting...");
@@ -98,8 +96,8 @@ namespace LBCService
             }
             catch (Exception e)
             {
-                // Don't want to abot everything if this fails.
-                Console.WriteLine(e);
+                // Don't worry about this if this fails.
+                Debug.WriteLine(e);
             }
 
         }
@@ -110,6 +108,7 @@ namespace LBCService
             WriteToDebugLog("LenovoBacklightControl service started.");
             PowerMethods.RegisterServiceForPowerNotifications(this);
             NamedPipeThread = new Thread(NamedPipeServer.EnableNamedPipeServer);
+            NamedPipeThread.IsBackground = true;
             NamedPipeThread.Start();
         }
 
@@ -123,9 +122,10 @@ namespace LBCService
         {
             //EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service stopping....", EventLogEntryType.Information, 50903);
             //StopRequest.Set();
-            WriteToDebugLog("LenovoBacklightControl service stopped");
+            WriteToDebugLog("Received stop.");
             NamedPipeServer.StopNamedPipe();
             NamedPipeThread.Join();
+            WriteToDebugLog("Stop complete.");
         }
     }
 }

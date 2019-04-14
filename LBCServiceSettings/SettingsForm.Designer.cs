@@ -68,7 +68,7 @@
             // 
             // timeoutUpDown
             // 
-            this.timeoutUpDown.Location = new System.Drawing.Point(14, 107);
+            this.timeoutUpDown.Location = new System.Drawing.Point(12, 92);
             this.timeoutUpDown.Maximum = new decimal(new int[] {
             99999999,
             0,
@@ -115,11 +115,11 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(140, 109);
+            this.label1.Location = new System.Drawing.Point(138, 87);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(265, 20);
+            this.label1.Size = new System.Drawing.Size(269, 40);
             this.label1.TabIndex = 5;
-            this.label1.Text = "Default backlight timeout in seconds";
+            this.label1.Text = "Default backlight timeout in seconds,\r\n0 = disable timer.";
             // 
             // groupBox2
             // 

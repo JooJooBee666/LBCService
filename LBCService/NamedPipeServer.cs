@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.CompilerServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
@@ -70,6 +71,7 @@ namespace LBCService
         /// <param name="iAsyncResult"></param>
         private static void NamedPipeServerConnectionCallback(IAsyncResult iAsyncResult)
         {
+            var pipeclosing = false;
             try
             {
                 // End waiting for the connection
@@ -98,6 +100,9 @@ namespace LBCService
                                 LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
                             }
                             break;
+                        case "CLOSEPIPE":
+                            pipeclosing = true;
+                            break;
                     }
                 }
             }
@@ -117,11 +122,17 @@ namespace LBCService
             finally
             {
                 // Close the pipe so a new one can be created
+                if (PipeServer.IsConnected) PipeServer.Disconnect();
+                PipeServer.Close();
                 PipeServer.Dispose();
             }
 
-            // Create a new pipe for next connection
-            StartPipeServer();
+            // Create a new pipe for next connection if not closing
+            if (!pipeclosing)
+            {
+                LenovoBacklightControl.WriteToDebugLog("Starting new PipeServer.");
+                StartPipeServer();
+            }
         }
 
         /// <summary>
@@ -129,7 +140,21 @@ namespace LBCService
         /// </summary>
         public static void StopNamedPipe()
         {
+            // send CLOSEPIPE command to listener so it does not open a new pipe
+            LenovoBacklightControl.WriteToDebugLog("Sending CLOSE to pipe");
+            var client = new NamedPipeClientStream(".", "LenovoBacklightControlPipe", PipeDirection.Out);
+            client.Connect();
+            var writer = new StreamWriter(client);
+            writer.WriteLine("CLOSEPIPE");
+            writer.Flush();
+            client.Dispose();
+
+            //Stop this PipeServer
+            LenovoBacklightControl.WriteToDebugLog("Disposing of PipServer.");
+            if (PipeServer.IsConnected) PipeServer.Disconnect();
+            PipeServer.Close();
             PipeServer.Dispose();
+            LenovoBacklightControl.WriteToDebugLog("PipeServer disposed.");
         }
     }
 }

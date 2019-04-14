@@ -77,12 +77,10 @@ namespace LBCServiceSettings
                     // Read data from client
                     var reader = new StreamReader(PipeServer);
                     var status = reader.ReadLine();
-                    switch (status)
+                    if (status == "LBCSettings-BackLightWasEnabledByPower")
                     {
-                        case "LBCSettings-BackLightWasEnabledByPower":
-                            IdleTimerControl.BackLightOn = true;
-                            IdleTimerControl.RestartTimer();
-                            break;
+                        IdleTimerControl.BackLightOn = true;
+                        IdleTimerControl.RestartTimer();
                     }
                 }
             }
@@ -96,7 +94,15 @@ namespace LBCServiceSettings
             catch (Exception e)
             {
                 var error = $"Problem parsing pipe data. Error:{e.Message}";
-                EventLog.WriteEntry("LBCSettings", error, EventLogEntryType.Error, 50915);
+                try
+                {
+                    EventLog.WriteEntry("LBCSettings", error, EventLogEntryType.Error, 50915);
+                }
+                catch (Exception ex)
+                {
+                    //Do nothing for now.  
+                }
+
             }
             finally
             {
