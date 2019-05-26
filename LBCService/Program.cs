@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Mime;
-using System.Reflection;
-using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ServiceProcess;
+using Autofac;
+using LBCService.Common;
+using TinyMessenger;
 
 namespace LBCService
 {
@@ -17,12 +12,22 @@ namespace LBCService
         /// </summary>
         static void Main()
         {
-            ServiceBase[] ServicesToRun;
-            ServicesToRun = new ServiceBase[]
+            // Building IoC container. All modules as singleton services since we do not consume them directly making use of pub-sub architecture with loosely couled modules.
+            var builder = new ContainerBuilder();
+            builder.RegisterModule<CommonModule>();
+            builder.RegisterType<LenovoBacklightControl>().AsSelf().SingleInstance();
+            builder.RegisterType<BacklightControls>().AsSelf().SingleInstance().AutoActivate();
+            //builder.RegisterType<PowerManagement>().AsSelf().SingleInstance().AutoActivate(); -- using service power states instead.
+            builder.RegisterType<NamedPipeServer>().AsSelf().SingleInstance().AutoActivate();
+            builder.RegisterType<NamedPipeClient>().WithParameter("pipeName", NamedPipes.ClientPipe).AsSelf().SingleInstance().AutoActivate();
+
+            var container = builder.Build();
+
+            var servicesToRun = new ServiceBase[]
             {
-                new LenovoBacklightControl(), 
+                container.Resolve<LenovoBacklightControl>()
             };
-            ServiceBase.Run(ServicesToRun);
+            ServiceBase.Run(servicesToRun);
         }
     }
 }
