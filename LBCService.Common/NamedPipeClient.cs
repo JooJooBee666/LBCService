@@ -12,17 +12,15 @@ namespace LBCService.Common
         private const string LocalMachine = ".";
         private const int Timeout = 1 * 1000; // 1 sec in ms
         private readonly ILogger _logger;
-        private readonly ITinyMessengerHub _hub;
         private readonly string _pipeName;
         private TinyMessageSubscriptionToken _subToSend;
 
         public NamedPipeClient(ILogger logger, ITinyMessengerHub hub, string pipeName)
         {
             _logger = logger;
-            _hub = hub;
             _pipeName = pipeName;
 
-            _subToSend = _hub.Subscribe<SendStatusRequestMessage>(OnSendStatusMessage);
+            _subToSend = hub.Subscribe<SendStatusRequestMessage>(OnSendStatusMessage);
         }
 
         private void OnSendStatusMessage(SendStatusRequestMessage message)
@@ -43,9 +41,9 @@ namespace LBCService.Common
                         {
                             writer.WriteLine(status.ConvertToString());
                             writer.Flush();
+                            if (client.IsConnected) client.WaitForPipeDrain();
                         }
-
-                        client.WaitForPipeDrain();
+                        
                         client.Dispose();
                     }
                 }

@@ -8,15 +8,18 @@ namespace LBCService.Common
     public class Logger : ILogger
     {
         private const string Source = "LenovoBacklightControl";
-        private string _debugLogPath;
+        private readonly bool _useEventLog;
+        private readonly string _debugLogPath;
         private readonly bool _isInitialized;
         private readonly object _lockObject = new object();
 
         public bool EnableDebugLog { get; set; }
 
-        public Logger()
+        public Logger(bool useEventLog, string logFile)
         {
-            if (!EventLog.SourceExists(Source))
+            _useEventLog = useEventLog;
+            _debugLogPath = logFile;
+            if (_useEventLog && !EventLog.SourceExists(Source))
             {
                 try
                 {
@@ -34,17 +37,14 @@ namespace LBCService.Common
             }
         }
 
-        public void Start(string logPath)
+        public void Start()
         {
-            lock (_lockObject)
-            {
-                _debugLogPath = logPath;
-            }
+            Debug("Logger started.");
         }
 
         public void Stop()
         {
-
+            Debug("Logger stopped.");
         }
 
         public void Debug(string message)
@@ -79,7 +79,7 @@ namespace LBCService.Common
 
         private void Log(string message, EventLogEntryType type, int eventId)
         {
-            if (_isInitialized) EventLog.WriteEntry(Source, message, type, eventId);
+            if (_useEventLog && _isInitialized) EventLog.WriteEntry(Source, message, type, eventId);
             WriteToDebugLog(message);
         }
 

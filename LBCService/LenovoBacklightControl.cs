@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using LBCService.Common;
 using LBCService.Common.Messages;
 using LBCService.Messages;
@@ -9,7 +8,6 @@ namespace LBCService
 {
     public partial class LenovoBacklightControl : CustomServiceBase
     {
-        private static readonly string DebugLogPath = AppDomain.CurrentDomain.BaseDirectory + "DebugLog.txt";
         private readonly ILogger _logger;
         private readonly ITinyMessengerHub _hub;
         private readonly IConfig _config;
@@ -28,7 +26,7 @@ namespace LBCService
             
             DebugMode();
             
-            _logger.Start(DebugLogPath);
+            _logger.Start();
             _logger.Info("LenovoBacklightControl service starting...", 50901);
         }
 
@@ -40,7 +38,7 @@ namespace LBCService
 
         protected override void ServiceStart()
         {
-            _logger.Start(DebugLogPath);
+            _logger.Start();
             //_subToPower = _hub.Subscribe<PowerStateMessage>(OnPowerStateChanged);
             _subToStatus = _hub.Subscribe<OnStatusReceivedMessage>(OnStatusReceived);
             _subToConfig = _hub.Subscribe<OnConfigLoadedMessage>(OnConfigLoaded);

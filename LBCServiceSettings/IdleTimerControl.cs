@@ -1,80 +1,132 @@
-﻿
-using System.Threading;
+﻿using System;
 using System.Timers;
-using Timer = System.Timers.Timer;
+using LBCService.Common;
+using LBCService.Common.Messages;
+using LBCServiceSettings.Messages;
+using TinyMessenger;
 
 namespace LBCServiceSettings
 {
-    internal class IdleTimerControl
+    public class IdleTimerControl : IDisposable
     {
-        public static object ThreadLocker;
-        public static Timer IdleTimer;
-        public static int UserTimeout;
-        internal struct LASTINPUTINFO
+        private readonly ITinyMessengerHub _hub;
+        private readonly KeyboardHookClass _keyboardHook;
+        private readonly MouseHookClass _mouseHook;
+        private Timer _idleTimer;
+
+        private bool _backLightOn;
+        private TinyMessageSubscriptionToken _subToStatus;
+        private TinyMessageSubscriptionToken _subToActivity;
+
+        public IdleTimerControl(ITinyMessengerHub hub, KeyboardHookClass keyboardHook, MouseHookClass mouseHook)
         {
-            public uint cbSize;
-            public uint dwTime;
+            _hub = hub;
+            _keyboardHook = keyboardHook;
+            _mouseHook = mouseHook;
+            _subToStatus = _hub.Subscribe<SendStatusRequestMessage>(OnSendStatus);
+            _subToActivity = _hub.Subscribe<UserActiveMessage>(_ => RestartTimer());
+        }
+
+        /// <summary>
+        /// Track backlight status.
+        /// </summary>
+        private void OnSendStatus(SendStatusRequestMessage message)
+        {
+            switch (message.Status)
+            {
+                case Status.EnableBacklight:
+                    _backLightOn = true;
+                    break;
+                case Status.DisableBacklight:
+                    _backLightOn = false;
+                    break;
+            }
         }
 
         /// <summary>
         /// Restarts the Idletimer and resets the interval (in case it has changed).
         /// </summary>
-        public static void RestartTimer()
+        private void RestartTimer()
         {
-            IdleTimer.Stop();
-            IdleTimer.Interval = UserTimeout * 1000;
-            IdleTimer.Start();
+            if (_idleTimer == null) return;
+            _idleTimer.Stop();
+            _idleTimer.Start();
 
             //enable backlight if it was off
-            if (!BackLightOn)
+            if (!_backLightOn)
             {
                 // Send the message to enable the backlight using a thread
-                var t = new Thread(() => SettingsForm.LBCServiceUpdateNotify("LBC-EnableBacklight"));
-                t.Start();
-                BackLightOn = true;
+                _hub.PublishAsync(new SendStatusRequestMessage(this, Status.EnableBacklight));
             }
         }
 
-        public static bool BackLightOn;
-
-        public static void SetTimer(int TimeOut)
+        public void SetTimer(int timeOut)
         {
-            ThreadLocker = new object();
+            if (_idleTimer != null)
+            {
+                _idleTimer.Stop();
+                _idleTimer.Dispose();
+                _idleTimer = null;
+            }
+            if (timeOut < 1) return;
 
             // Send the message to enable the backlight using a thread
-            var t = new Thread(() => SettingsForm.LBCServiceUpdateNotify("LBC-EnableBacklight"));
-            t.Start();
-            BackLightOn = true;
-            UserTimeout = TimeOut;
+            _hub.PublishAsync(new SendStatusRequestMessage(this, Status.EnableBacklight));
 
             //
             // Enable mouse and Keyboard hooks. We don't actually look to what was typed 
             // or where the mouse, we just fire an event if there was any activity at all
             //
-            KeyboardHookClass.EnableKBHook();
-            MouseHookClass.EnableMouseHook();
+            _keyboardHook.EnableHook();
+            _mouseHook.EnableHook();
 
             // Create a timer
-            IdleTimer = new Timer(TimeOut*1000);
+            _idleTimer = new Timer(timeOut * 1000);
             // Hook up the Elapsed event for the timer. 
-            IdleTimer.Elapsed += TimeoutReached;
-            IdleTimer.AutoReset = true;
-            IdleTimer.Enabled = true;
+            _idleTimer.Elapsed += TimeoutReached;
+            _idleTimer.AutoReset = true;
+            _idleTimer.Start();
+        }
+
+        /// <summary>
+        /// Stop timer and disable user activity tracking.
+        /// </summary>
+        public void StopTimer()
+        {
+            if (_idleTimer != null)
+            {
+                _idleTimer.Stop();
+                _idleTimer.Dispose();
+                _idleTimer = null;
+            }
+            _keyboardHook.DisableHook();
+            _mouseHook.DisableHook();
         }
 
         /// <summary>
         /// Check the idle time and disable backlight if passed
         /// Re-enables if timer gets reset (i.e. user activity)
         /// </summary>
-        public static void TimeoutReached(object source, ElapsedEventArgs e)
+        private void TimeoutReached(object source, ElapsedEventArgs e)
         {
-            if (BackLightOn)
+            if (_backLightOn)
             {
                 // Send the message to disable the backlight using a thread
-                var t = new Thread(() => SettingsForm.LBCServiceUpdateNotify("LBC-DisableBacklight"));
-                t.Start();
-                BackLightOn = false;
+                _hub.PublishAsync(new SendStatusRequestMessage(this, Status.DisableBacklight));
             }
+        }
+
+        public void Dispose()
+        {
+            StopTimer();
+
+            _subToStatus?.Dispose();
+            _subToStatus = null;
+            _subToActivity?.Dispose();
+            _subToActivity = null;
+
+            _keyboardHook?.Dispose();
+            _mouseHook?.Dispose();
         }
     }
 }

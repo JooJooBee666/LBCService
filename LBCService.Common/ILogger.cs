@@ -6,7 +6,7 @@ namespace LBCService.Common
     {
         bool EnableDebugLog { get; set; }
 
-        void Start(string logPath);
+        void Start();
 
         void Stop();
 

@@ -173,7 +173,11 @@
             // 
             // openFileDialog
             // 
-            this.openFileDialog.InitialDirectory = "C:\\";
+            this.openFileDialog.DefaultExt = "dll";
+            this.openFileDialog.FileName = "Keyboard_Core.dll";
+            this.openFileDialog.Filter = "Keyboard_Core.dll|Keyboard_Core.dll";
+            this.openFileDialog.InitialDirectory = "C:\\ProgramData\\Lenovo\\ImController\\Plugins\\ThinkKeyboardPlugin\\x86\\";
+            this.openFileDialog.Title = "Browse for Keyboard_Core.dll";
             // 
             // enableDebugLoggingCheck
             // 

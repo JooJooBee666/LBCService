@@ -45,7 +45,13 @@ namespace LBCService.Common
                         new XElement(SavedStateKey, (int)data.SavedState)
                     )
                 );
-                configXML.Save(XMLPath);
+
+                using (var stream = File.Open(XMLPath, File.Exists(XMLPath) ? FileMode.Truncate : FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                using (var writer = XmlWriter.Create(stream, new XmlWriterSettings()))
+                {
+                    configXML.Save(writer);
+                }
+
                 EnableFullControl(XMLPath);
 
                 return true;
@@ -62,10 +68,11 @@ namespace LBCService.Common
         {
             var configData = ConfigData.GetDefault();
             //
-            // If config file is not found, return default data.
+            // If config file is not found, create it and return default data.
             //
             if (!File.Exists(XMLPath))
             {
+                Save(configData);
                 _hub.Publish(new OnConfigLoadedMessage(this, configData));
                 return configData;
             }
