@@ -19,6 +19,32 @@ namespace LBCServiceSettings
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool UnhookWindowsHookEx(IntPtr hookPtr);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        /// <summary>
+        /// Gets ms since last user activity (applicatble to current user only).
+        /// </summary>
+        /// <returns></returns>
+        public static uint GetLastInputTime()
+        {
+            uint idleTime = 0;
+            var lastInputInfo = new LASTINPUTINFO();
+            lastInputInfo.cbSize = (uint)Marshal.SizeOf(lastInputInfo);
+            lastInputInfo.dwTime = 0;
+
+            var envTicks = (uint)Environment.TickCount;
+
+            if (GetLastInputInfo(ref lastInputInfo))
+            {
+                var lastInputTick = lastInputInfo.dwTime;
+
+                idleTime = envTicks - lastInputTick;
+            }
+
+            return idleTime;
+        }
+
         public static IntPtr GetModule()
         {
             return Marshal.GetHINSTANCE(typeof(Win32).Module);
@@ -41,6 +67,18 @@ namespace LBCServiceSettings
             WH_CALLWNDPROCRET = 12,
             WH_KEYBOARD_LL = 13,
             WH_MOUSE_LL = 14
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LASTINPUTINFO
+        {
+            public static readonly int SizeOf = Marshal.SizeOf(typeof(LASTINPUTINFO));
+
+            [MarshalAs(UnmanagedType.U4)]
+            public UInt32 cbSize;
+
+            [MarshalAs(UnmanagedType.U4)]
+            public UInt32 dwTime;
         }
     }
 }

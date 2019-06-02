@@ -12,17 +12,19 @@ namespace LBCServiceSettings
         private readonly ITinyMessengerHub _hub;
         private readonly KeyboardHookClass _keyboardHook;
         private readonly MouseHookClass _mouseHook;
+        private readonly LastInputHook _inputHook;
         private Timer _idleTimer;
 
         private bool _backLightOn;
         private TinyMessageSubscriptionToken _subToStatus;
         private TinyMessageSubscriptionToken _subToActivity;
 
-        public IdleTimerControl(ITinyMessengerHub hub, KeyboardHookClass keyboardHook, MouseHookClass mouseHook)
+        public IdleTimerControl(ITinyMessengerHub hub, KeyboardHookClass keyboardHook, MouseHookClass mouseHook, LastInputHook inputHook)
         {
             _hub = hub;
             _keyboardHook = keyboardHook;
             _mouseHook = mouseHook;
+            _inputHook = inputHook;
             _subToStatus = _hub.Subscribe<SendStatusRequestMessage>(OnSendStatus);
             _subToActivity = _hub.Subscribe<UserActiveMessage>(_ => RestartTimer());
         }
@@ -77,8 +79,9 @@ namespace LBCServiceSettings
             // Enable mouse and Keyboard hooks. We don't actually look to what was typed 
             // or where the mouse, we just fire an event if there was any activity at all
             //
-            _keyboardHook.EnableHook();
-            _mouseHook.EnableHook();
+            //_keyboardHook.EnableHook();
+            //_mouseHook.EnableHook();
+            _inputHook.EnableHook();
 
             // Create a timer
             _idleTimer = new Timer(timeOut * 1000);
@@ -99,8 +102,9 @@ namespace LBCServiceSettings
                 _idleTimer.Dispose();
                 _idleTimer = null;
             }
-            _keyboardHook.DisableHook();
-            _mouseHook.DisableHook();
+            //_keyboardHook.DisableHook();
+            //_mouseHook.DisableHook();
+            _inputHook.DisableHook();
         }
 
         /// <summary>
@@ -127,6 +131,7 @@ namespace LBCServiceSettings
 
             _keyboardHook?.Dispose();
             _mouseHook?.Dispose();
+            _inputHook?.Dispose();
         }
     }
 }

@@ -25,6 +25,7 @@ namespace LBCServiceSettings
             builder.RegisterType<IdleTimerControl>().AsSelf().SingleInstance();
             builder.RegisterType<KeyboardHookClass>().AsSelf().SingleInstance();
             builder.RegisterType<MouseHookClass>().AsSelf().SingleInstance();
+            builder.RegisterType<LastInputHook>().AsSelf().SingleInstance();
             // builder.RegisterType<NamedPipeServer>().AsSelf().SingleInstance().AutoActivate(); -- for now we are not listening to service.
             builder.RegisterType<NamedPipeClient>().WithParameter("pipeName", NamedPipes.ServerPipe).AsSelf().SingleInstance().AutoActivate();
 

@@ -74,6 +74,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommonHook.cs" />
+    <Compile Include="LastInputHook.cs" />
     <Compile Include="Messages\FormClosingMessage.cs" />
     <Compile Include="Messages\FormOpenedMessage.cs" />
     <Compile Include="Messages\FormOpenRequestMessage.cs" />

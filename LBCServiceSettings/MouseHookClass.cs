@@ -4,10 +4,9 @@ using TinyMessenger;
 
 namespace LBCServiceSettings
 {
-    public class MouseHookClass : IDisposable
+    public class MouseHookClass : CommonHook
     {
         private readonly ITinyMessengerHub _hub;
-        private readonly object _lockObj = new object();
         private IntPtr _mousehookId = IntPtr.Zero;
         private DateTime _lastStateSent = DateTime.Today;
         private Win32.HookProc _callback;
@@ -18,28 +17,22 @@ namespace LBCServiceSettings
             _hub = hub;
         }
 
-        public void EnableHook()
+        protected override void EnableHookInternal()
         {
-            lock (_lockObj)
+            _callback = HookCallback;
+            if (_mousehookId == IntPtr.Zero)
             {
-                _callback = HookCallback;
-                if (_mousehookId == IntPtr.Zero)
-                {
-                    _mousehookId = Win32.SetWindowsHookEx(Win32.HookType.WH_MOUSE_LL, _callback, Win32.GetModule(), 0);
-                }
+                _mousehookId = Win32.SetWindowsHookEx(Win32.HookType.WH_MOUSE_LL, _callback, Win32.GetModule(), 0);
             }
         }
 
-        public void DisableHook()
+        protected override void DisableHookInternal()
         {
-            lock (_lockObj)
+            if (_mousehookId != IntPtr.Zero)
             {
-                if (_mousehookId != IntPtr.Zero)
-                {
-                    Win32.UnhookWindowsHookEx(_mousehookId);
-                    _mousehookId = IntPtr.Zero;
-                    _callback = null;
-                }
+                Win32.UnhookWindowsHookEx(_mousehookId);
+                _mousehookId = IntPtr.Zero;
+                _callback = null;
             }
         }
 
@@ -56,7 +49,7 @@ namespace LBCServiceSettings
             return Win32.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             DisableHook();
         }
