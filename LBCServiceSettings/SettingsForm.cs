@@ -1,27 +1,31 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.IO.Pipes;
 using System.ServiceProcess;
 using System.Threading;
 using System.Windows.Forms;
+using LBCService.Common;
+using LBCService.Common.Messages;
+using LBCServiceSettings.Messages;
+using TinyMessenger;
 
 namespace LBCServiceSettings
 {
     public partial class SettingsForm : Form
     {
-        private static SettingsForm Callback;
-        private static XMLConfigMethods.ConfigData configData;
-        private static Thread CheckServiceThread;
-        private static bool StopThread;
-        private static SynchronizationContext ctx;
-        private static Thread NamedPipeThread;
+        private readonly ITinyMessengerHub _hub;
+        private readonly SysTray _sysTray;
+        private readonly IdleTimerControl _idleTimer;
+        private readonly SynchronizationContext _ctx;
 
-        public SettingsForm()
+        public SettingsForm(ITinyMessengerHub hub, SysTray sysTray, IdleTimerControl idleTimer)
         {
+            _hub = hub;
+            _sysTray = sysTray;
+            _idleTimer = idleTimer;
+
             InitializeComponent();
-            ctx = SynchronizationContext.Current;
+            _ctx = SynchronizationContext.Current;
             try
             {
                 var sc = new ServiceController("LenovoBacklightControl");
@@ -30,71 +34,55 @@ namespace LBCServiceSettings
                     //Do nothing, this is to allow the app to catch the exception if the service is not present
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                MessageBox.Show("Could not find service.  Please install.", "Service Error!", MessageBoxButtons.OK,
+                MessageBox.Show("Could not find service. Please install.", "Service Error!", MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+                Close();
             }
-            //
-            // Register Event log source if it is not already
-            //
-            if (!EventLog.SourceExists("LenovoBacklightControl"))
-            {
-                try
-                {
-                    EventLog.CreateEventSource("LenovoBacklightControl", "System");
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show($"Unabled to register event log source. Event logging will be disabled. Error: {e.Message}",
-                                    "Event log error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            }
-
-            openFileDialog.Title = "Browse for Keyboard_Core.dll";
-            openFileDialog.DefaultExt = "dll";
-            openFileDialog.CheckFileExists = true;
-            Callback = this;
-            Callback.ShowInTaskbar = false;
-            Callback.Opacity = 0;
-            NamedPipeThread = new Thread(NamedPipeServer.EnableNamedPipeServer);
-            NamedPipeThread.Start();
+            
+            _hub.Subscribe<OnConfigLoadedMessage>( x => ExecuteOnUi(OnConfigLoaded, x));
+            _hub.Subscribe<ServiceStateMessage>(x => ExecuteOnUi(CheckService, x));
+            _hub.Subscribe<FormOpenRequestMessage>(x => ExecuteOnUi(ShowSettingsForm));
         }
 
         private void SettingsForm_Load(object sender, EventArgs e)
         {
-            Systray.InitializeTrayIcon();
-            LoadConfig();
-            var file_info = new FileInfo(configData.Keyboard_Core_Path);
-            var kbCoreParent = file_info.DirectoryName;
+            ShowInTaskbar = false;
+            Hide();
+            _sysTray.IsVisible = true;
+            _hub.Publish(new ConfigReloadRequestMessage(this));
+        }
+
+        private void OnConfigLoaded(OnConfigLoadedMessage message)
+        {
+            var configData = message.Data;
+            enableDebugLoggingCheck.Checked = configData.EnableDebugLog;
+            wakeStateCheck.Checked = configData.SaveBacklightState;
+            keyboardCorePathText.Text = configData.KeyboardCorePath;
+            timeoutUpDown.Value = configData.TimeoutPreference;
+            radioLow.Checked = configData.LightLevel == LightLevel.Low;
+            radioHigh.Checked = configData.LightLevel == LightLevel.High;
+            var fileInfo = new FileInfo(configData.KeyboardCorePath);
+            var kbCoreParent = fileInfo.DirectoryName;
             openFileDialog.InitialDirectory = kbCoreParent;
-            if (configData.Timeout_Preference > 0) IdleTimerControl.SetTimer(configData.Timeout_Preference);
-            enableDebugLoggingCheck.Checked = configData.Enable_Debug_Log;
-            wakeStateCheck.Checked = configData.Save_Backlight_State;
+            openFileDialog.FileName = fileInfo.Name;
+            if (configData.TimeoutPreference > 0) _idleTimer.SetTimer(configData.TimeoutPreference);
+            else _idleTimer.StopTimer();
         }
 
-        public static void ShowSettingsForm()
+        public void ShowSettingsForm()
         {
-            Callback.Show();
-            Callback.ShowInTaskbar = true;
-            Callback.Opacity = 100;
-            StopThread = false;
-            CheckServiceThread = new Thread(CheckService);
-            CheckServiceThread.Start();
+            Show();
+            ShowInTaskbar = true;
+            _hub.Publish(new FormOpenedMessage(this));
         }
 
-        public static void HideSettingsForm()
+        public void HideSettingsForm()
         {
-            Callback.Hide();
-            Callback.ShowInTaskbar = false;
-            Callback.Opacity = 0;
-            StopThread = true;
-            CheckServiceThread.Abort();
-        }
-        public static void CloseSettingsForm()
-        {
-            Systray.trayIcon.Visible = false;
-            Callback.Close();   
+            Hide();
+            ShowInTaskbar = false;
+            _hub.Publish(new FormClosingMessage(this));
         }
 
         private void browseButton_Click(object sender, EventArgs e)
@@ -109,158 +97,113 @@ namespace LBCServiceSettings
         {
             if (File.Exists(keyboardCorePathText.Text))
             {
-                if (XMLConfigMethods.SaveConfigXML(keyboardCorePathText.Text, radioLow.Checked ? 1 : 2,
-                    (int)timeoutUpDown.Value, enableDebugLoggingCheck.Checked, wakeStateCheck.Checked))
+                var configData = new ConfigData
+                {
+                    KeyboardCorePath = keyboardCorePathText.Text,
+                    LightLevel = radioLow.Checked ? LightLevel.Low : LightLevel.High,
+                    TimeoutPreference = (int) timeoutUpDown.Value,
+                    EnableDebugLog = enableDebugLoggingCheck.Checked,
+                    SaveBacklightState = wakeStateCheck.Checked
+                };
+                _hub.PublishAsync(new ConfigSaveRequestMessage(this, configData), _ =>
                 {
                     // Send message to the service to reload the backlight value
-                    var t = new Thread(() => LBCServiceUpdateNotify("LBC-UpdateConfigData"));
-                    t.Start();
-                    configData.Timeout_Preference = (int)timeoutUpDown.Value;
-                    configData.Light_Level = radioLow.Checked ? 1 : 2;
-                    configData.Keyboard_Core_Path = keyboardCorePathText.Text;
-                    configData.Enable_Debug_Log = enableDebugLoggingCheck.Checked;
-                    configData.Save_Backlight_State = wakeStateCheck.Checked;
-                    if (configData.Timeout_Preference > 0)
+                    _hub.PublishAsync(new SendStatusRequestMessage(this, Status.UpdateConfig));
+
+                    if (configData.TimeoutPreference > 0)
                     {
-                        IdleTimerControl.UserTimeout = configData.Timeout_Preference;
-                        IdleTimerControl.RestartTimer();
+                        _idleTimer.SetTimer(configData.TimeoutPreference);
                     }
-                }
+                    else
+                    {
+                        _idleTimer.StopTimer();
+                    }
+                });
             }
             else
             {
-                MessageBox.Show("Path to Keyboard_Core.dll is invalid.  File not found.", "DLL path error",
+                MessageBox.Show("Path to Keyboard_Core.dll is invalid. File not found.", "DLL path error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        /// <summary>
-        /// Send given message to the named pipe for the service
-        /// </summary>
-        /// <param name="message"></param>
-        public static void  LBCServiceUpdateNotify(string message)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            try
-            {
-                var client = new NamedPipeClientStream(".", "LenovoBacklightControlPipe", PipeDirection.Out);
-                client.Connect();
-                var writer = new StreamWriter(client);
-                writer.WriteLine(message);
-                writer.Flush();
-                client.Dispose();
-            }
-            catch (Exception e)
-            {                
-                //Not implemented
-            }
+            _hub.Publish(new FormClosingMessage(this));
+            _sysTray.IsVisible = false;
+            base.OnFormClosed(e);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.ApplicationExitCall || e.CloseReason == CloseReason.TaskManagerClosing)
+            switch (e.CloseReason)
             {
-                StopThread = true;
-                return;
+                case CloseReason.WindowsShutDown:
+                case CloseReason.TaskManagerClosing:
+                case CloseReason.ApplicationExitCall:
+
+                    return;
             }
             e.Cancel = true;
             //assuming you want the close-button to only hide the form, 
             //and are overriding the form's OnFormClosing method:
-            NamedPipeServer.StopNamedPipe();
-            NamedPipeThread.Join();
             HideSettingsForm();
         }
 
-        private static void LoadConfig()
+        /// <summary>
+        /// Check service status thread. Updates the status on the form, if it is being shown.
+        /// </summary>
+        private void CheckService(ServiceStateMessage message)
         {
-            configData = XMLConfigMethods.ReadConfigXML();
-            if (configData != null)
+            if (!message.Status.HasValue)
             {
-                Callback.keyboardCorePathText.Text = configData.Keyboard_Core_Path;
-                Callback.timeoutUpDown.Value = configData.Timeout_Preference;
-                if (configData.Light_Level == 1)
+                statusTextBox.Text = "Status UNKNOWN";
+                statusTextBox.ForeColor = Color.Red;
+            }
+            else
+            {
+                switch (message.Status.Value)
                 {
-                    Callback.radioLow.Checked = true;
-                    Callback.radioHigh.Checked = false;
-                }
-                else if (configData.Light_Level == 2)
-                {
-                    Callback.radioLow.Checked = false;
-                    Callback.radioHigh.Checked = true;
+                    case ServiceControllerStatus.Running:
+                        statusTextBox.Text = "Running";
+                        statusTextBox.ForeColor = Color.LawnGreen;
+                        break;
+                    case ServiceControllerStatus.Stopped:
+                        statusTextBox.Text = "Stopped";
+                        statusTextBox.ForeColor = Color.Red;
+                        break;
+                    case ServiceControllerStatus.Paused:
+                        statusTextBox.Text = "Paused";
+                        statusTextBox.ForeColor = Color.Orange;
+                        break;
+                    case ServiceControllerStatus.StopPending:
+                        statusTextBox.Text = "Stopping..";
+                        statusTextBox.ForeColor = Color.Yellow;
+                        break;
+                    case ServiceControllerStatus.StartPending:
+                        statusTextBox.Text = "Starting...";
+                        statusTextBox.ForeColor = Color.Yellow;
+                        break;
+                    case ServiceControllerStatus.ContinuePending:
+                        break;
+                    case ServiceControllerStatus.PausePending:
+                        break;
+                    default:
+                        statusTextBox.Text = "Status UNKNOWN";
+                        statusTextBox.ForeColor = Color.Red;
+                        break;
                 }
             }
         }
 
-        
-        /// <summary>
-        /// Check service status thread.  Updates the status on the form, if it is being shown.
-        /// </summary>
-        private static void CheckService()
+        private void ExecuteOnUi<T>(Action<T> action, T parameter)
         {
-            while (Callback.ShowInTaskbar && !StopThread)
-            {
-                try
-                {
-                    var sc = new ServiceController("LenovoBacklightControl");
-                    switch (sc.Status)
-                    {
-                        case ServiceControllerStatus.Running:
-                            ctx.Send(delegate
-                            {
-                                Callback.statusTextBox.Text = "Running";
-                                Callback.statusTextBox.ForeColor = Color.LawnGreen;
-                            }, null);
-                            break;
-                        case ServiceControllerStatus.Stopped:
-                            ctx.Send(delegate
-                            {
-                                Callback.statusTextBox.Text = "Stopped";
-                                Callback.statusTextBox.ForeColor = Color.Red;
-                            }, null);
-                            break;
-                        case ServiceControllerStatus.Paused:
-                            ctx.Send(delegate
-                            {
-                                Callback.statusTextBox.Text = "Paused";
-                                Callback.statusTextBox.ForeColor = Color.Orange;
-                            }, null);
-                            break;
-                        case ServiceControllerStatus.StopPending:
-                            ctx.Send(delegate
-                            {
-                                Callback.statusTextBox.Text = "Stopping..";
-                                Callback.statusTextBox.ForeColor = Color.Yellow;
-                            }, null);
-                            break;
-                        case ServiceControllerStatus.StartPending:
-                            ctx.Send(delegate
-                            {
-                                Callback.statusTextBox.Text = "Starting...";
-                                Callback.statusTextBox.ForeColor = Color.Yellow;
-                            }, null);
-                            break;
-                        case ServiceControllerStatus.ContinuePending:
-                            break;
-                        case ServiceControllerStatus.PausePending:
-                            break;
-                        default:
-                            ctx.Send(delegate
-                            {
-                                Callback.statusTextBox.Text = "Status UNKNOWN";
-                                Callback.statusTextBox.ForeColor = Color.Red;
-                            }, null);
-                            break;
-                    }
-                }
-                catch (Exception e)
-                {
-                    ctx.Send(delegate
-                    {
-                        Callback.statusTextBox.Text = "Status UNKNOWN";
-                        Callback.statusTextBox.ForeColor = Color.Red;
-                    }, null);
-                }
-                Thread.Sleep(500);
-            }
+            _ctx.Send(x => action((T)x), parameter);
+        }
+
+        private void ExecuteOnUi(Action action)
+        {
+            _ctx.Send(x => action(), null);
         }
     }
 }

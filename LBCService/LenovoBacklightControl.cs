@@ -1,115 +1,33 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.ServiceProcess;
-using System.Threading;
+﻿using System.Diagnostics;
+using LBCService.Common;
+using LBCService.Common.Messages;
+using LBCService.Messages;
+using TinyMessenger;
 
 namespace LBCService
 {
-    public partial class LenovoBacklightControl : ServiceBase
+    public partial class LenovoBacklightControl : CustomServiceBase
     {
-        public static int BacklightPreference;
-        public static BacklightControls BLC;
-        public static ServiceBase LBCServiceBase;
-        public static int UserTimeoutPreference;
-        public static string KBCorePath;
-        private static Thread NamedPipeThread;
-        public static AutoResetEvent StopRequest = new AutoResetEvent(false);
-        public static string DebugLogPath;
-        public static bool EnableDebugLog;
-        public static bool SaveBacklightState;
+        private readonly ILogger _logger;
+        private readonly ITinyMessengerHub _hub;
+        private readonly IConfig _config;
+        //private TinyMessageSubscriptionToken _subToPower;
+        private TinyMessageSubscriptionToken _subToStatus;
+        private TinyMessageSubscriptionToken _subToConfig;
+        private TinyMessageSubscriptionToken _subToStop;
 
-        public LenovoBacklightControl()
+        public LenovoBacklightControl(ILogger logger, ITinyMessengerHub hub, IConfig config)
         {
+            _logger = logger;
+            _hub = hub;
+            _config = config;
+
             InitializeComponent();
+            
             DebugMode();
-            DebugLogPath = AppDomain.CurrentDomain.BaseDirectory + "DebugLog.txt";
-            BLC = new BacklightControls();
-            LoadConfig();
-            LBCServiceBase = this;
-            UserTimeoutPreference = 30;
-            AutoLog = true;
-
-            //
-            // Register Event log source if it is not already
-            //
-            if (!EventLog.SourceExists("LenovoBacklightControl"))
-            {
-                try
-                {
-                    EventLog.CreateEventSource("LenovoBacklightControl", "System");
-                }
-                catch (Exception e)
-                {
-                    var error = $"Error creating DebugLogFile at {DebugLogPath}. {e.Message}";
-                    WriteToDebugLog(error);
-                }
-            }
-            EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service starting...", EventLogEntryType.Information, 50901);
-            WriteToDebugLog("LenovoBacklightControl service starting...");
-        }
-
-
-        /// <summary>
-        /// Load config data from XML
-        /// </summary>
-        public static void LoadConfig()
-        {
-            var configData = XMLConfigMethods.ReadConfigXML();
-            BacklightPreference = configData.Light_Level;
-            KBCorePath = configData.Keyboard_Core_Path;
-        }
-
-        /// <summary>
-        /// Write to debug file if enabled
-        /// </summary>
-        /// <param name="message">The message to write to the debug file.</param>
-        public static void WriteToDebugLog(string message)
-        {
-            //
-            // Return if debug option is not enabled
-            //
-            if (!EnableDebugLog) return;
-
-            //
-            // Create Debug File if it doesn't exists
-            //
-            if (!File.Exists(DebugLogPath))
-            {
-                try
-                {
-                    File.Create(DebugLogPath).Dispose();
-                }
-                catch (Exception e)
-                {
-                    EventLog.WriteEntry("LenovoBacklightControl", $"Error creating DebugLogFile at {DebugLogPath}. {e.Message}", EventLogEntryType.Information, 50920);
-                }
-            }
-
-            var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            try
-            {
-                using (StreamWriter sw = File.AppendText(DebugLogPath))
-                {
-                    sw.WriteLine($"{date} - {message}");
-                }
-            }
-            catch (Exception e)
-            {
-                // Don't worry about this if this fails.
-                Debug.WriteLine(e);
-            }
-
-        }
-
-        protected override void OnStart(string[] args)
-        {
-            EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service started.", EventLogEntryType.Information, 50902);
-            WriteToDebugLog("LenovoBacklightControl service started.");
-            PowerMethods.RegisterServiceForPowerNotifications(this);
-            NamedPipeThread = new Thread(NamedPipeServer.EnableNamedPipeServer);
-            NamedPipeThread.IsBackground = true;
-            NamedPipeThread.Start();
+            
+            _logger.Start();
+            _logger.Info("LenovoBacklightControl service starting...", 50901);
         }
 
         [Conditional("DEBUG")]
@@ -118,14 +36,89 @@ namespace LBCService
             Debugger.Launch();
         }
 
-        protected override void OnStop()
+        protected override void ServiceStart()
         {
-            //EventLog.WriteEntry("LenovoBacklightControl", "LenovoBacklightControl service stopping....", EventLogEntryType.Information, 50903);
-            //StopRequest.Set();
-            WriteToDebugLog("Received stop.");
-            NamedPipeServer.StopNamedPipe();
-            NamedPipeThread.Join();
-            WriteToDebugLog("Stop complete.");
+            _logger.Start();
+            //_subToPower = _hub.Subscribe<PowerStateMessage>(OnPowerStateChanged);
+            _subToStatus = _hub.Subscribe<OnStatusReceivedMessage>(OnStatusReceived);
+            _subToConfig = _hub.Subscribe<OnConfigLoadedMessage>(OnConfigLoaded);
+            _subToStop = _hub.Subscribe<StopServiceRequestMessage>(_ => Stop());
+
+            _hub.Publish(new ConfigReloadRequestMessage(this));
+            _hub.Publish(new OnStartupMessage(this));
+            _logger.Info("LenovoBacklightControl service started.", 50902);
+        }
+
+        protected override void ServiceStop()
+        {
+            _logger.Debug("Received stop.");
+            
+            //_subToPower?.Dispose();
+            //_subToPower = null;
+            _subToStatus?.Dispose();
+            _subToStatus = null;
+            _subToConfig?.Dispose();
+            _subToConfig = null;
+            _subToStop?.Dispose();
+            _subToStop = null;
+
+            _hub.Publish(new OnStopMessage(this));
+            _logger.Debug("Stop complete.");
+            _logger.Stop();
+        }
+
+        protected override void ServicePause()
+        {
+            // For now treat pause as stop.
+            ServiceStop();
+        }
+
+        //private void OnPowerStateChanged(PowerStateMessage message)
+        //{
+        //    if (_config.Data == null) return;
+        //    if (!message.IsDisplayOn || !_config.Data.SaveBacklightState) // TODO: Do we need this check?
+        //    {
+        //        _logger.Debug("Detected system resume but backlight state option enabled, not activating.");
+        //        return;
+        //    }
+        //    //
+        //    // Notify the settings app that the service started the backlight on it's own if option to track is enabled
+        //    //
+        //    if (_config.Data.SaveBacklightState)
+        //    {
+        //        _logger.Debug("Detected system resume. Activating backlight.");
+        //        _hub.PublishAsync(new ActivateBacklightRequestMessage(this));
+        //        _hub.PublishAsync(new SendStatusRequestMessage(this, Status.BackLightWasEnabledByPower));
+        //    }
+        //}
+
+        private void OnStatusReceived(OnStatusReceivedMessage message)
+        {
+            // Read status from client
+            switch (message.Status)
+            {
+                case Status.Close: // Not used, can be removed.
+                    Stop();
+                    return;
+                case Status.EnableBacklight:
+                    _hub.PublishAsync(new ActivateBacklightRequestMessage(this));
+                    break;
+                case Status.DisableBacklight:
+                    _hub.PublishAsync(new DeactivateBacklightRequestMessage(this));
+                    break;
+                case Status.UpdateConfig:
+                    _hub.PublishAsync(new ConfigReloadRequestMessage(this));
+                    break;
+                default:
+                    _logger.Error($"Status message '{message.Status}' not recognized.");
+                    return;
+            }
+        }
+
+        private void OnConfigLoaded(OnConfigLoadedMessage message)
+        {
+            _logger.EnableDebugLog = message.Data.EnableDebugLog;
+            if (_logger.EnableDebugLog) _logger.Debug("Debug log enabled.");
         }
     }
 }

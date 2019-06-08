@@ -1,15 +1,21 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Pipes;
 using System.Runtime.InteropServices;
-using System.ServiceProcess;
-using System.Threading;
+using LBCService.Common;
+using LBCService.Messages;
+using TinyMessenger;
 
 namespace LBCService
 {
-    public static class PowerMethods
+    public class PowerManagement : IDisposable
     {
+        private readonly ILogger _logger;
+        private readonly ITinyMessengerHub _hub;
+        private IntPtr? _hMonitorOn;
+        private TinyMessageSubscriptionToken _subToStart;
+        private TinyMessageSubscriptionToken _subToStop;
+
+        #region Win32
+
         private delegate void HandlerEx(int control, int eventType, IntPtr eventData, IntPtr context);
 
         [DllImport(@"User32", SetLastError = true, EntryPoint = "RegisterPowerSettingNotification",
@@ -104,20 +110,6 @@ namespace LBCService
             public SYSTEM_POWER_STATE MinDeviceWakeState;
             public SYSTEM_POWER_STATE DefaultLowLatencyWake;
         }
-        
-        /// <summary>
-        ///    Resgister's our service to receive events when the power state changes
-        /// </summary>
-        /// <param name="serviceBase"></param>
-        internal static void RegisterServiceForPowerNotifications(ServiceBase serviceBase)
-        {
-            var message = $"Registering Service for Power Notifications:{serviceBase.ServiceName}.";
-            EventLog.WriteEntry("LenovoBacklightControl",message , EventLogEntryType.Information, 50906);
-            LenovoBacklightControl.WriteToDebugLog(message);
-            var serviceStatusHandle = RegisterServiceCtrlHandlerEx(serviceBase.ServiceName, HandlerCallback, IntPtr.Zero);
-
-            hMonitorOn = RegisterPowerSettingNotification(serviceStatusHandle, ref GUID_MONITOR_POWER_ON, DEVICE_NOTIFY_SERVICE_HANDLE);
-        }
 
         internal struct BATTERY_REPORTING_SCALE
         {
@@ -137,20 +129,38 @@ namespace LBCService
             PowerSystemMaximum = 7
         }
 
-        private static IntPtr hMonitorOn;
+        #endregion
 
-        public static bool ConnectedStandby { get; private set; }
+        //public bool ConnectedStandby { get; private set; }
+
+        public PowerManagement(ILogger logger, ITinyMessengerHub hub)
+        {
+            _logger = logger;
+            _hub = hub;
+            _subToStart = _hub.Subscribe<OnStartupMessage>(_ => RegisterServiceForPowerNotifications(_.ServiceName));
+            _subToStop = _hub.Subscribe<OnStopMessage>(_ => UnregisterFromPowerNotifications());
+        }
+        
+        /// <summary>
+        ///    Resgister's our service to receive events when the power state changes
+        /// </summary>
+        private void RegisterServiceForPowerNotifications(string serviceName)
+        {
+            var message = $"Registering Service for Power Notifications:{serviceName}.";
+            _logger.Info(message, 50906);
+
+            var serviceStatusHandle = RegisterServiceCtrlHandlerEx(serviceName, HandlerCallback, IntPtr.Zero);
+
+            _hMonitorOn = RegisterPowerSettingNotification(serviceStatusHandle, ref GUID_MONITOR_POWER_ON, DEVICE_NOTIFY_SERVICE_HANDLE);
+        }
 
         /// <summary>
         ///    Unregisters our service from power events
         /// </summary>
-        public static void UnregisterFromPowerNotifications()
+        private void UnregisterFromPowerNotifications()
         {
-#if DEBUG
-            EventLog.WriteEntry("LenovoBacklightControl", "Unregistering from Power Notifications.", EventLogEntryType.Information, 50906);
-#endif
-            LenovoBacklightControl.WriteToDebugLog("Unregistering from Power Notifications.");
-            var retVal = UnregisterPowerSettingNotification(hMonitorOn);
+            _logger.Debug("Unregistering from Power Notifications.");
+            if (_hMonitorOn.HasValue) UnregisterPowerSettingNotification(_hMonitorOn.Value);
         }
 
         /// <summary>
@@ -160,18 +170,12 @@ namespace LBCService
         /// <param name="eventType"></param>
         /// <param name="eventData"></param>
         /// <param name="context"></param>
-        private static void HandlerCallback(int control, int eventType, IntPtr eventData, IntPtr context)
+        private void HandlerCallback(int control, int eventType, IntPtr eventData, IntPtr context)
         {
-#if def
-            EventLog.WriteEntry("LenovoBacklightControl", $"HandlerCallback(control:{control}, eventType:{eventType}, eventData:{eventData}, context: {context})", EventLogEntryType.Information, 50906);
-#endif
-            LenovoBacklightControl.WriteToDebugLog(
-                $"HandlerCallback(control:{control}, eventType:{eventType}, eventData:{eventData}, context: {context})");
+            _logger.Debug($"HandlerCallback(control:{control}, eventType:{eventType}, eventData:{eventData}, context: {context})");
 
             if (control == SERVICE_CONTROL_POWEREVENT)
             {
-                if (eventData == null) return;
-
                 if (eventType != PBT_POWERSETTINGCHANGE) return;
                 var powersetting = Marshal.PtrToStructure(eventData, typeof(POWERBROADCAST_SETTING));
 
@@ -182,24 +186,18 @@ namespace LBCService
                 }
                 else
                 {
-#if DEBUG
-                    EventLog.WriteEntry("LenovoBacklightControl", "ERROR: powersetting == null",EventLogEntryType.Error, 50906);
-#endif
-                    LenovoBacklightControl.WriteToDebugLog("ERROR: powersetting == null");
+                    _logger.Error("ERROR: powersetting == null", 50906);
                 }
             }
             else if (control == SERVICE_CONTROL_STOP)
             {
-#if DEBUG
-                EventLog.WriteEntry("LenovoBacklightControl", "SERVICE_CONTROL_STOP received.", EventLogEntryType.Information, 50906);
-#endif
-                LenovoBacklightControl.WriteToDebugLog("SERVICE_CONTROL_STOP received.");
+                _logger.Info("SERVICE_CONTROL_STOP received.", 50906);
                 UnregisterFromPowerNotifications();
-                LenovoBacklightControl.LBCServiceBase.Stop();
+                _hub.PublishAsync(new StopServiceRequestMessage(this));
             }
         }
 
-        public static IntPtr WndProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+        /*public IntPtr WndProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (message != WM_POWERBROADCAST || wParam.ToInt32() != PBT_POWERSETTINGCHANGE) return IntPtr.Zero;
 
@@ -209,50 +207,24 @@ namespace LBCService
             UpdateStandbyState(powersetting);
 
             return IntPtr.Zero;
-        }
+        }*/
 
         /// <summary>
         ///   Detect when system resumes from standy and enable the backlight
         /// </summary>
         /// <param name="powersetting"></param>
-        private static void UpdateStandbyState(POWERBROADCAST_SETTING powersetting)
+        private void UpdateStandbyState(POWERBROADCAST_SETTING powersetting)
         {
-            // When the display is on (1), you are exiting standby
-            if (powersetting.Data == 0 || LenovoBacklightControl.SaveBacklightState)
-            {
-                LenovoBacklightControl.WriteToDebugLog("Detected system resume but backlight state option enabled, not activating.");
-                return;
-            }
-#if DEBUG
-            EventLog.WriteEntry("LenovoBacklightControl", "Activating backlight.", EventLogEntryType.Information, 50905);
-#endif
-            LenovoBacklightControl.WriteToDebugLog("Detected system resume.  Activating backlight.");
-            LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
-            //
-            // Notify the settings app that the service started the backlight on it's own if option to track is enabled
-            //
-            if (LenovoBacklightControl.SaveBacklightState)
-            {
-                try
-                {
-                    var client = new NamedPipeClientStream(".", "LBCSettingsNamedPipe", PipeDirection.Out);
-                    client.Connect();
-                    var writer = new StreamWriter(client);
-                    writer.WriteLine("LBCSettings-BackLightWasEnabledByPower");
-                    writer.Flush();
-                    client.Dispose();
-                }
-                catch (Exception e)
-                {
-                    var message = $"Error sending status update to LBCSettings app. Error: {e.Message}";
-#if DEBUG
-                EventLog.WriteEntry("LenovoBacklightControl", message, EventLogEntryType.Information, 50905);
-#endif
-                    LenovoBacklightControl.WriteToDebugLog(message);
-                    LenovoBacklightControl.BLC.ActivateBacklight(LenovoBacklightControl.BacklightPreference);
-                }
-            }
-            ConnectedStandby = false;
+            _hub.PublishAsync(new PowerStateMessage(this, powersetting.Data != 0));
+        }
+
+        public void Dispose()
+        {
+            _subToStart?.Dispose();
+            _subToStart = null;
+
+            _subToStop?.Dispose();
+            _subToStop = null;
         }
     }
 }

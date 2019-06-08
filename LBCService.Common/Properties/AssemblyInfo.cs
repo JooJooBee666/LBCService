@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("LCBService Settings Form")]
+[assembly: AssemblyTitle("LBCService.Common")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("SettingsForm")]
+[assembly: AssemblyProduct("LBCService.Common")]
 [assembly: AssemblyCopyright("Copyright ©  2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("63ab0bac-f427-4f21-b5ec-422fbf3a0b3b")]
+[assembly: Guid("11566742-3260-4a08-9c8e-41ce14aacf68")]
 
 // Version information for an assembly consists of the following four values:
 //

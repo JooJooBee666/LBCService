@@ -1,62 +1,57 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
+using LBCServiceSettings.Messages;
+using TinyMessenger;
 
 namespace LBCServiceSettings
 {
-    internal class MouseHookClass
+    public class MouseHookClass : CommonHook
     {
-        private static LowLevelMouseProc MouseProc = HookCallback;
+        private readonly ITinyMessengerHub _hub;
+        private IntPtr _mousehookId = IntPtr.Zero;
+        private DateTime _lastStateSent = DateTime.Today;
+        private Win32.HookProc _callback;
 
-        private static IntPtr MousehookID = IntPtr.Zero;
 
-        private const int WH_MOUSE_LL = 14;
-
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
-
-        public static void EnableMouseHook()
+        public MouseHookClass(ITinyMessengerHub hub)
         {
-            MousehookID = SetHook(MouseProc);
+            _hub = hub;
         }
 
-        public static void DisableHook()
+        protected override void EnableHookInternal()
         {
-            UnhookWindowsHookEx(MousehookID);
-        }
-
-        private static IntPtr SetHook(LowLevelMouseProc proc)
-        {
-            using (var currentProcess = Process.GetCurrentProcess())
-            using (var currentModule = currentProcess.MainModule)
+            _callback = HookCallback;
+            if (_mousehookId == IntPtr.Zero)
             {
-                return SetWindowsHookEx(WH_MOUSE_LL, proc,GetModuleHandle(currentModule.ModuleName), 0);
+                _mousehookId = Win32.SetWindowsHookEx(Win32.HookType.WH_MOUSE_LL, _callback, Win32.GetModule(), 0);
             }
         }
 
-
-        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-        private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        protected override void DisableHookInternal()
         {
-            if (nCode < 0) return CallNextHookEx(MousehookID, nCode, wParam, lParam);
+            if (_mousehookId != IntPtr.Zero)
+            {
+                Win32.UnhookWindowsHookEx(_mousehookId);
+                _mousehookId = IntPtr.Zero;
+                _callback = null;
+            }
+        }
 
-            // mouse input detected, restart the idle timer and enable the KB 
-            // backlight if it was off due to previous timeout
-            IdleTimerControl.RestartTimer();
-            return CallNextHookEx(MousehookID, nCode, wParam, lParam);
+        private IntPtr HookCallback(int code, IntPtr wParam, IntPtr lParam)
+        {
+            if (code < 0) return Win32.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+
+            // throttle down notifications to at least once per 200ms.
+            if ((DateTime.Now - _lastStateSent).TotalMilliseconds > 200)
+            {
+                _hub.PublishAsync(new UserActiveMessage(this));
+                _lastStateSent = DateTime.Now;
+            }
+            return Win32.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+        }
+
+        public override void Dispose()
+        {
+            DisableHook();
         }
     }
 }
