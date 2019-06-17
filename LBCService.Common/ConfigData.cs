@@ -20,6 +20,8 @@
 
         public LightLevel SavedState { get; set; }
 
+        public bool MonitorDisplayState { get; set; } 
+
         public static ConfigData GetDefault()
         {
             return new ConfigData
@@ -29,7 +31,8 @@
                 TimeoutPreference = 300,
                 EnableDebugLog = false,
                 SaveBacklightState = true,
-                SavedState = LightLevel.High
+                SavedState = LightLevel.High,
+                MonitorDisplayState = false
             };
         }
     }

@@ -18,6 +18,7 @@ namespace LBCService.Common
         private const string EnableDebugLogKey = "Enable_Debug_Log";
         private const string SaveBacklightStateKey = "Save_Backlight_State";
         private const string SavedStateKey = "Saved_State";
+        private const string MonitorDisplayStateKey = "Monitor_Display_State";
         private readonly ILogger _logger;
         private readonly ITinyMessengerHub _hub;
         private TinyMessageSubscriptionToken _subToReload;
@@ -42,7 +43,8 @@ namespace LBCService.Common
                         new XElement(TimeoutPreferenceKey, data.TimeoutPreference),
                         new XElement(EnableDebugLogKey, data.EnableDebugLog),
                         new XElement(SaveBacklightStateKey, data.SaveBacklightState),
-                        new XElement(SavedStateKey, (int)data.SavedState)
+                        new XElement(SavedStateKey, (int)data.SavedState),
+                        new XElement(MonitorDisplayStateKey, data.MonitorDisplayState)
                     )
                 );
 
@@ -104,6 +106,9 @@ namespace LBCService.Common
                                 break;
                             case SavedStateKey:
                                 configData.SavedState = (LightLevel)int.Parse(xmlElement.InnerText);
+                                break;
+                            case MonitorDisplayStateKey:
+                                configData.MonitorDisplayState = bool.Parse(xmlElement.InnerText);
                                 break;
                         }
                     }

@@ -16,13 +16,17 @@ namespace LBCServiceSettings
         private readonly ITinyMessengerHub _hub;
         private readonly SysTray _sysTray;
         private readonly IdleTimerControl _idleTimer;
+        private readonly DisplayHook _displayHook;
+        private readonly NamedPipeServer _pipeServer;
         private readonly SynchronizationContext _ctx;
 
-        public SettingsForm(ITinyMessengerHub hub, SysTray sysTray, IdleTimerControl idleTimer)
+        public SettingsForm(ITinyMessengerHub hub, SysTray sysTray, IdleTimerControl idleTimer, DisplayHook displayHook, NamedPipeServer pipeServer)
         {
             _hub = hub;
             _sysTray = sysTray;
             _idleTimer = idleTimer;
+            _displayHook = displayHook;
+            _pipeServer = pipeServer;
 
             InitializeComponent();
             _ctx = SynchronizationContext.Current;
@@ -44,6 +48,13 @@ namespace LBCServiceSettings
             _hub.Subscribe<OnConfigLoadedMessage>( x => ExecuteOnUi(OnConfigLoaded, x));
             _hub.Subscribe<ServiceStateMessage>(x => ExecuteOnUi(CheckService, x));
             _hub.Subscribe<FormOpenRequestMessage>(x => ExecuteOnUi(ShowSettingsForm));
+            _hub.Subscribe<DisplayStateMessage>(x =>
+            {
+                if (x.State == DisplayState.On) _hub.PublishAsync(new SendStatusRequestMessage(this, Status.EnableBacklight));
+            });
+            _hub.Subscribe<OnStatusReceivedMessage>(x => ExecuteOnUi(OnStatus, x));
+            _pipeServer.Start();
+            _hub.PublishAsync(new SendStatusRequestMessage(this, Status.RequestBacklightState));
         }
 
         private void SettingsForm_Load(object sender, EventArgs e)
@@ -63,19 +74,28 @@ namespace LBCServiceSettings
             timeoutUpDown.Value = configData.TimeoutPreference;
             radioLow.Checked = configData.LightLevel == LightLevel.Low;
             radioHigh.Checked = configData.LightLevel == LightLevel.High;
+            monitorDisplayState.Checked = configData.MonitorDisplayState;
             var fileInfo = new FileInfo(configData.KeyboardCorePath);
             var kbCoreParent = fileInfo.DirectoryName;
             openFileDialog.InitialDirectory = kbCoreParent;
             openFileDialog.FileName = fileInfo.Name;
+
             if (configData.TimeoutPreference > 0) _idleTimer.SetTimer(configData.TimeoutPreference);
             else _idleTimer.StopTimer();
+            if (configData.MonitorDisplayState) _displayHook.EnableHook();
+            else _displayHook.DisableHook();
         }
 
         public void ShowSettingsForm()
         {
             Show();
             ShowInTaskbar = true;
+            TopMost = true;
+            BringToFront();
+            Focus();
             _hub.Publish(new FormOpenedMessage(this));
+            _hub.PublishAsync(new SendStatusRequestMessage(this, Status.RequestBacklightState));
+            TopMost = false;
         }
 
         public void HideSettingsForm()
@@ -103,21 +123,19 @@ namespace LBCServiceSettings
                     LightLevel = radioLow.Checked ? LightLevel.Low : LightLevel.High,
                     TimeoutPreference = (int) timeoutUpDown.Value,
                     EnableDebugLog = enableDebugLoggingCheck.Checked,
-                    SaveBacklightState = wakeStateCheck.Checked
+                    SaveBacklightState = wakeStateCheck.Checked,
+                    MonitorDisplayState = monitorDisplayState.Checked
                 };
                 _hub.PublishAsync(new ConfigSaveRequestMessage(this, configData), _ =>
                 {
                     // Send message to the service to reload the backlight value
                     _hub.PublishAsync(new SendStatusRequestMessage(this, Status.UpdateConfig));
+                    
+                    if (configData.TimeoutPreference > 0) _idleTimer.SetTimer(configData.TimeoutPreference);
+                    else _idleTimer.StopTimer();
 
-                    if (configData.TimeoutPreference > 0)
-                    {
-                        _idleTimer.SetTimer(configData.TimeoutPreference);
-                    }
-                    else
-                    {
-                        _idleTimer.StopTimer();
-                    }
+                    if (configData.MonitorDisplayState) _displayHook.EnableHook();
+                    else _displayHook.DisableHook();
                 });
             }
             else
@@ -141,7 +159,7 @@ namespace LBCServiceSettings
                 case CloseReason.WindowsShutDown:
                 case CloseReason.TaskManagerClosing:
                 case CloseReason.ApplicationExitCall:
-
+                    _pipeServer.Stop();
                     return;
             }
             e.Cancel = true;
@@ -193,6 +211,21 @@ namespace LBCServiceSettings
                         statusTextBox.ForeColor = Color.Red;
                         break;
                 }
+            }
+        }
+
+        private void OnStatus(OnStatusReceivedMessage message)
+        {
+            if (!Visible) return;
+            switch (message.Status)
+            {
+                case Status.BacklightStateOff:
+                case Status.BacklightStateLow:
+                case Status.BacklightStateHigh:
+                    BacklightOff.Checked = message.Status == Status.BacklightStateOff;
+                    BacklightLow.Checked = message.Status == Status.BacklightStateLow;
+                    BacklightHigh.Checked = message.Status == Status.BacklightStateHigh;
+                    break;
             }
         }
 

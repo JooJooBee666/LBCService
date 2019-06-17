@@ -1,11 +1,18 @@
 ﻿using System;
+using TinyMessenger;
 
 namespace LBCServiceSettings
 {
     public abstract class CommonHook : IDisposable
     {
+        protected readonly ITinyMessengerHub Hub;
         private readonly object _lockObject = new object();
         private bool _isHooked;
+
+        protected CommonHook(ITinyMessengerHub hub)
+        {
+            Hub = hub;
+        }
 
         public void EnableHook()
         {

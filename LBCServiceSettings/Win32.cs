@@ -7,6 +7,15 @@ namespace LBCServiceSettings
     {
         public const int WM_KEYDOWN = 0x0100;
 
+        // 6fe69556-704a-47a0-8f24-c28d936fda47
+        public static Guid GUID_CONSOLE_DISPLAY_STATE = new Guid(0x6fe69556, 0x704a, 0x47a0, 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47);
+        // 02731015-4510-4526-99E6-E5A17EBD1AEA
+        public static Guid GUID_MONITOR_POWER_ON = new Guid(0x02731015, 0x4510, 0x4526, 0x99, 0xE6, 0xE5, 0xA1, 0x7E, 0xBD, 0x1A, 0xEA);
+        public const int DEVICE_NOTIFY_CALLBACK = 0x2;
+        public const int PBT_POWERSETTINGCHANGE = 0x8013; // DPPE
+        
+        public delegate int DeviceNotifyCallbackRoutine(IntPtr context, int type, IntPtr setting);
+
         public delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -21,6 +30,12 @@ namespace LBCServiceSettings
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        [DllImport("Powrprof.dll", SetLastError = true)]
+        public static extern int PowerSettingRegisterNotification(ref Guid settingGuid, uint flags, ref DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS recipient, ref IntPtr registrationHandle);
+
+        [DllImport("Powrprof.dll", SetLastError = true)]
+        public static extern int PowerSettingUnregisterNotification(IntPtr registrationHandle);
 
         /// <summary>
         /// Gets ms since last user activity (applicatble to current user only).
@@ -79,6 +94,21 @@ namespace LBCServiceSettings
 
             [MarshalAs(UnmanagedType.U4)]
             public UInt32 dwTime;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS
+        {
+            public DeviceNotifyCallbackRoutine Callback;
+            public IntPtr Context;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        public struct POWERBROADCAST_SETTING
+        {
+            public Guid PowerSetting;
+            public uint DataLength;
+            public byte Data;
         }
     }
 }

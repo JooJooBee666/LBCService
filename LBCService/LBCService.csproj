@@ -111,12 +111,11 @@
     </Compile>
     <Compile Include="Messages\ActivateBacklightRequestMessage.cs" />
     <Compile Include="Messages\DeactivateBacklightRequestMessage.cs" />
+    <Compile Include="Messages\GetBacklightStateRequestMessage.cs" />
     <Compile Include="Messages\OnBacklightChangedMessage.cs" />
     <Compile Include="Messages\OnStartupMessage.cs" />
     <Compile Include="Messages\OnStopMessage.cs" />
-    <Compile Include="Messages\PowerStateMessage.cs" />
     <Compile Include="Messages\StopServiceRequestMessage.cs" />
-    <Compile Include="PowerManagement.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>

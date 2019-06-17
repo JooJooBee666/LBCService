@@ -10,8 +10,8 @@ namespace LBCServiceSettings
     public class IdleTimerControl : IDisposable
     {
         private readonly ITinyMessengerHub _hub;
-        private readonly KeyboardHookClass _keyboardHook;
-        private readonly MouseHookClass _mouseHook;
+        //private readonly KeyboardHook _keyboardHook;
+        //private readonly MouseHook _mouseHook;
         private readonly LastInputHook _inputHook;
         private Timer _idleTimer;
 
@@ -19,27 +19,28 @@ namespace LBCServiceSettings
         private TinyMessageSubscriptionToken _subToStatus;
         private TinyMessageSubscriptionToken _subToActivity;
 
-        public IdleTimerControl(ITinyMessengerHub hub, KeyboardHookClass keyboardHook, MouseHookClass mouseHook, LastInputHook inputHook)
+        public IdleTimerControl(ITinyMessengerHub hub, /*KeyboardHook keyboardHook, MouseHook mouseHook,*/ LastInputHook inputHook)
         {
             _hub = hub;
-            _keyboardHook = keyboardHook;
-            _mouseHook = mouseHook;
+            //_keyboardHook = keyboardHook;
+            //_mouseHook = mouseHook;
             _inputHook = inputHook;
-            _subToStatus = _hub.Subscribe<SendStatusRequestMessage>(OnSendStatus);
+            _subToStatus = _hub.Subscribe<OnStatusReceivedMessage>(OnSendStatus);
             _subToActivity = _hub.Subscribe<UserActiveMessage>(_ => RestartTimer());
         }
 
         /// <summary>
         /// Track backlight status.
         /// </summary>
-        private void OnSendStatus(SendStatusRequestMessage message)
+        private void OnSendStatus(OnStatusReceivedMessage message)
         {
             switch (message.Status)
             {
-                case Status.EnableBacklight:
+                case Status.BacklightStateLow:
+                case Status.BacklightStateHigh:
                     _backLightOn = true;
                     break;
-                case Status.DisableBacklight:
+                case Status.BacklightStateOff:
                     _backLightOn = false;
                     break;
             }
@@ -129,8 +130,8 @@ namespace LBCServiceSettings
             _subToActivity?.Dispose();
             _subToActivity = null;
 
-            _keyboardHook?.Dispose();
-            _mouseHook?.Dispose();
+            //_keyboardHook?.Dispose();
+            //_mouseHook?.Dispose();
             _inputHook?.Dispose();
         }
     }
