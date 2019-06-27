@@ -47,6 +47,7 @@
     <Compile Include="CommonModule.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="ConfigData.cs" />
+    <Compile Include="DisplayState.cs" />
     <Compile Include="LightLevel.cs" />
     <Compile Include="Messages\ConfigReloadRequestMessage.cs" />
     <Compile Include="IConfig.cs" />

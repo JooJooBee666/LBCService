@@ -23,10 +23,12 @@ namespace LBCServiceSettings
             builder.RegisterType<ServiceChecker>().AsSelf().SingleInstance().AutoActivate();
             builder.RegisterType<SysTray>().AsSelf().SingleInstance();
             builder.RegisterType<IdleTimerControl>().AsSelf().SingleInstance();
-            builder.RegisterType<KeyboardHookClass>().AsSelf().SingleInstance();
-            builder.RegisterType<MouseHookClass>().AsSelf().SingleInstance();
+            //builder.RegisterType<KeyboardHook>().AsSelf().SingleInstance();
+            //builder.RegisterType<MouseHook>().AsSelf().SingleInstance();
             builder.RegisterType<LastInputHook>().AsSelf().SingleInstance();
-            // builder.RegisterType<NamedPipeServer>().AsSelf().SingleInstance().AutoActivate(); -- for now we are not listening to service.
+            builder.RegisterType<DisplayHook>().AsSelf().SingleInstance();
+
+            builder.RegisterType<NamedPipeServer>().AsSelf().SingleInstance().AutoActivate();
             builder.RegisterType<NamedPipeClient>().WithParameter("pipeName", NamedPipes.ServerPipe).AsSelf().SingleInstance().AutoActivate();
 
             var container = builder.Build();

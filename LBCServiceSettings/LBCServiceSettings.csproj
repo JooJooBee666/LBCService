@@ -75,12 +75,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommonHook.cs" />
+    <Compile Include="DisplayHook.cs" />
     <Compile Include="LastInputHook.cs" />
+    <Compile Include="Messages\DisplayStateMessage.cs" />
     <Compile Include="Messages\FormClosingMessage.cs" />
     <Compile Include="Messages\FormOpenedMessage.cs" />
     <Compile Include="Messages\FormOpenRequestMessage.cs" />
     <Compile Include="Messages\ServiceStateMessage.cs" />
     <Compile Include="Messages\UserActiveMessage.cs" />
+    <Compile Include="NamedPipeServer.cs" />
     <Compile Include="ServiceChecker.cs" />
     <Compile Include="SettingsForm.cs">
       <SubType>Form</SubType>
@@ -89,8 +92,8 @@
       <DependentUpon>SettingsForm.cs</DependentUpon>
     </Compile>
     <Compile Include="IdleTimerControl.cs" />
-    <Compile Include="KeyboardHookClass.cs" />
-    <Compile Include="MouseHookClass.cs" />
+    <Compile Include="KeyboardHook.cs" />
+    <Compile Include="MouseHook.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SysTray.cs" />

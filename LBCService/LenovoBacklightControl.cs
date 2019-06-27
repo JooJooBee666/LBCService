@@ -10,17 +10,14 @@ namespace LBCService
     {
         private readonly ILogger _logger;
         private readonly ITinyMessengerHub _hub;
-        private readonly IConfig _config;
-        //private TinyMessageSubscriptionToken _subToPower;
         private TinyMessageSubscriptionToken _subToStatus;
         private TinyMessageSubscriptionToken _subToConfig;
         private TinyMessageSubscriptionToken _subToStop;
 
-        public LenovoBacklightControl(ILogger logger, ITinyMessengerHub hub, IConfig config)
+        public LenovoBacklightControl(ILogger logger, ITinyMessengerHub hub)
         {
             _logger = logger;
             _hub = hub;
-            _config = config;
 
             InitializeComponent();
             
@@ -39,7 +36,6 @@ namespace LBCService
         protected override void ServiceStart()
         {
             _logger.Start();
-            //_subToPower = _hub.Subscribe<PowerStateMessage>(OnPowerStateChanged);
             _subToStatus = _hub.Subscribe<OnStatusReceivedMessage>(OnStatusReceived);
             _subToConfig = _hub.Subscribe<OnConfigLoadedMessage>(OnConfigLoaded);
             _subToStop = _hub.Subscribe<StopServiceRequestMessage>(_ => Stop());
@@ -53,8 +49,6 @@ namespace LBCService
         {
             _logger.Debug("Received stop.");
             
-            //_subToPower?.Dispose();
-            //_subToPower = null;
             _subToStatus?.Dispose();
             _subToStatus = null;
             _subToConfig?.Dispose();
@@ -73,25 +67,6 @@ namespace LBCService
             ServiceStop();
         }
 
-        //private void OnPowerStateChanged(PowerStateMessage message)
-        //{
-        //    if (_config.Data == null) return;
-        //    if (!message.IsDisplayOn || !_config.Data.SaveBacklightState) // TODO: Do we need this check?
-        //    {
-        //        _logger.Debug("Detected system resume but backlight state option enabled, not activating.");
-        //        return;
-        //    }
-        //    //
-        //    // Notify the settings app that the service started the backlight on it's own if option to track is enabled
-        //    //
-        //    if (_config.Data.SaveBacklightState)
-        //    {
-        //        _logger.Debug("Detected system resume. Activating backlight.");
-        //        _hub.PublishAsync(new ActivateBacklightRequestMessage(this));
-        //        _hub.PublishAsync(new SendStatusRequestMessage(this, Status.BackLightWasEnabledByPower));
-        //    }
-        //}
-
         private void OnStatusReceived(OnStatusReceivedMessage message)
         {
             // Read status from client
@@ -108,6 +83,9 @@ namespace LBCService
                     break;
                 case Status.UpdateConfig:
                     _hub.PublishAsync(new ConfigReloadRequestMessage(this));
+                    break;
+                case Status.RequestBacklightState:
+                    _hub.PublishAsync(new GetBacklightStateRequestMessage(this));
                     break;
                 default:
                     _logger.Error($"Status message '{message.Status}' not recognized.");

@@ -10,7 +10,6 @@ namespace LBCServiceSettings
     public class LastInputHook : CommonHook
     {
         private const int Period = 300;
-        private readonly ITinyMessengerHub _hub;
         private Timer _timer;
 
         private void Callback(object state)
@@ -18,14 +17,11 @@ namespace LBCServiceSettings
             var inactiveTime = Win32.GetLastInputTime();
             if (Period > inactiveTime) // Check whether user was active since last timer tick.
             {
-                _hub.PublishAsync(new UserActiveMessage(this));
+                Hub.PublishAsync(new UserActiveMessage(this));
             }
         }
 
-        public LastInputHook(ITinyMessengerHub hub)
-        {
-            _hub = hub;
-        }
+        public LastInputHook(ITinyMessengerHub hub) : base(hub) { }
 
         protected override void EnableHookInternal()
         {

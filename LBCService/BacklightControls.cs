@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 using ImpromptuInterface;
 using LBCService.Common;
 using LBCService.Common.Messages;
@@ -13,12 +14,17 @@ namespace LBCService
         private readonly ILogger _logger;
         private readonly ITinyMessengerHub _hub;
 
+        private Thread _thread;
+        private CancellationTokenSource _cts;
+        private LightLevel? _currentLevel;
+
         private IBacklightControl _kcInstance;
         private TinyMessageSubscriptionToken _subToConfig;
         private TinyMessageSubscriptionToken _subToActivate;
         private TinyMessageSubscriptionToken _subToDeactivate;
         private TinyMessageSubscriptionToken _subToStop;
         private TinyMessageSubscriptionToken _subToStart;
+        private TinyMessageSubscriptionToken _subToRequest;
 
         public BacklightControls(ILogger logger, ITinyMessengerHub hub)
         {
@@ -32,9 +38,9 @@ namespace LBCService
                 Clear();
                 Initialize(data.KeyboardCorePath);
 
-                var lightLevel = CheckBacklightStatus();
-                if (!lightLevel.HasValue ||
-                    (lightLevel.Value != LightLevel.Off && lightLevel.Value != data.LightLevel))
+                _currentLevel = CheckBacklightStatus();
+                if (!_currentLevel.HasValue ||
+                    (_currentLevel.Value != LightLevel.Off && _currentLevel.Value != data.LightLevel))
                 {
                     // backlight preference has changed, let's set it to the new value.
                     ActivateBacklight(data.LightLevel);
@@ -43,6 +49,7 @@ namespace LBCService
                 // React to direct request to change backlight.
                 _subToActivate = _hub.Subscribe<ActivateBacklightRequestMessage>(_ => ActivateBacklight(data.LightLevel));
                 _subToDeactivate = _hub.Subscribe<DeactivateBacklightRequestMessage>(_ => ActivateBacklight(LightLevel.Off));
+                _subToRequest = _hub.Subscribe<GetBacklightStateRequestMessage>(_ => SendBacklightState(CheckBacklightStatus()));
                 // Save backlight state on stop.
                 _subToStop = _hub.Subscribe<OnStopMessage>(_ =>
                 {
@@ -58,7 +65,83 @@ namespace LBCService
                         ActivateBacklight(data.SavedState);
                     }
                 });
+
+                StartChecker();
             });
+        }
+        
+        private void StartChecker()
+        {
+            _cts = new CancellationTokenSource();
+            _thread = new Thread(Checker)
+            {
+                Name = "BacklightThread",
+                IsBackground = true
+            };
+            _thread.Start(_cts.Token);
+        }
+
+        private void Checker(object parameter)
+        {
+            if (!(parameter is CancellationToken token)) return;
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    var lightLevel = CheckBacklightStatus();
+                    if (token.IsCancellationRequested) return;
+                    if (lightLevel.HasValue && (!_currentLevel.HasValue || _currentLevel.Value != lightLevel.Value))
+                    {
+                        _currentLevel = lightLevel;
+                        SendBacklightState(_currentLevel);
+                    }
+                    if (token.IsCancellationRequested) return;
+                    Thread.Sleep(300);
+                }
+                catch (OperationCanceledException)
+                {
+                    // This is ok.
+                    return;
+                }
+                catch (ThreadAbortException)
+                {
+                    // This is ok.
+                    return;
+                }
+            }
+        }
+
+        private void StopChecker()
+        {
+            _cts?.Cancel();
+            _thread?.Abort();
+            _thread = null;
+            _cts?.Dispose();
+            _cts = null;
+        }
+
+        private void SendBacklightState(LightLevel? lightLevel)
+        {
+            if (lightLevel.HasValue)
+            {
+                Status status;
+                switch (lightLevel.Value)
+                {
+                    case LightLevel.Off:
+                        status = Status.BacklightStateOff;
+                        break;
+                    case LightLevel.Low:
+                        status = Status.BacklightStateLow;
+                        break;
+                    case LightLevel.High:
+                        status = Status.BacklightStateHigh;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                _hub.PublishAsync(new SendStatusRequestMessage(this, status));
+            }
         }
 
         private void ActivateBacklight(LightLevel lightLevel)
@@ -141,6 +224,9 @@ namespace LBCService
             _subToStop = null;
             _subToStart?.Dispose();
             _subToStart = null;
+            _subToRequest?.Dispose();
+            _subToRequest = null;
+            StopChecker();
         }
 
         public void Dispose()

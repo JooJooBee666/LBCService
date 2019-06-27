@@ -17,7 +17,6 @@ namespace LBCService
             builder.RegisterModule(new CommonModule(true, AppDomain.CurrentDomain.BaseDirectory + "DebugLog.txt"));
             builder.RegisterType<LenovoBacklightControl>().AsSelf().SingleInstance();
             builder.RegisterType<BacklightControls>().AsSelf().SingleInstance().AutoActivate();
-            //builder.RegisterType<PowerManagement>().AsSelf().SingleInstance().AutoActivate(); -- using service power states instead.
             builder.RegisterType<NamedPipeServer>().AsSelf().SingleInstance().AutoActivate();
             builder.RegisterType<NamedPipeClient>().WithParameter("pipeName", NamedPipes.ClientPipe).AsSelf().SingleInstance().AutoActivate();
 
