@@ -114,9 +114,19 @@ namespace LBCService
             var message = $"Registering Service for Power Notifications:{serviceBase.ServiceName}.";
             EventLog.WriteEntry("LenovoBacklightControl",message , EventLogEntryType.Information, 50906);
             LenovoBacklightControl.WriteToDebugLog(message);
-            var serviceStatusHandle = RegisterServiceCtrlHandlerEx(serviceBase.ServiceName, HandlerCallback, IntPtr.Zero);
+            try
+            {
+                var serviceStatusHandle = RegisterServiceCtrlHandlerEx(serviceBase.ServiceName, HandlerCallback, IntPtr.Zero);
+                hMonitorOn = RegisterPowerSettingNotification(serviceStatusHandle, ref GUID_MONITOR_POWER_ON, DEVICE_NOTIFY_SERVICE_HANDLE);
+            }
+            catch (Exception e)
+            {
+#if DEBUG
+                EventLog.WriteEntry("LenovoBacklightControl", "Failed to register for Power Notificaitons. Error: " + e.Message, EventLogEntryType.Information, 50906);
+#endif
+                LenovoBacklightControl.WriteToDebugLog("Failed to register for Power Notificaitons. Error: " + e.Message);
+            }
 
-            hMonitorOn = RegisterPowerSettingNotification(serviceStatusHandle, ref GUID_MONITOR_POWER_ON, DEVICE_NOTIFY_SERVICE_HANDLE);
         }
 
         internal struct BATTERY_REPORTING_SCALE
@@ -162,7 +172,7 @@ namespace LBCService
         /// <param name="context"></param>
         private static void HandlerCallback(int control, int eventType, IntPtr eventData, IntPtr context)
         {
-#if def
+#if DEBUG
             EventLog.WriteEntry("LenovoBacklightControl", $"HandlerCallback(control:{control}, eventType:{eventType}, eventData:{eventData}, context: {context})", EventLogEntryType.Information, 50906);
 #endif
             LenovoBacklightControl.WriteToDebugLog(
@@ -173,20 +183,29 @@ namespace LBCService
                 if (eventData == null) return;
 
                 if (eventType != PBT_POWERSETTINGCHANGE) return;
-                var powersetting = Marshal.PtrToStructure(eventData, typeof(POWERBROADCAST_SETTING));
+                try
+                {
+                    var powersetting = Marshal.PtrToStructure(eventData, typeof(POWERBROADCAST_SETTING));
 
-                if (powersetting != null)
-                {
-                    //Valid power event data, process it
-                    UpdateStandbyState((POWERBROADCAST_SETTING) powersetting);
-                }
-                else
-                {
+                    if (powersetting != null)
+                    {
+                        //Valid power event data, process it
+                        UpdateStandbyState((POWERBROADCAST_SETTING)powersetting);
+                    }
+                    else
+                    {
 #if DEBUG
-                    EventLog.WriteEntry("LenovoBacklightControl", "ERROR: powersetting == null",EventLogEntryType.Error, 50906);
+                        EventLog.WriteEntry("LenovoBacklightControl", "ERROR: powersetting == null", EventLogEntryType.Error, 50906);
 #endif
-                    LenovoBacklightControl.WriteToDebugLog("ERROR: powersetting == null");
+                        LenovoBacklightControl.WriteToDebugLog("ERROR: powersetting == null");
+                    }
                 }
+                catch (Exception e)
+                {
+                    EventLog.WriteEntry("LenovoBacklightControl", "Powersetting Interop failed. Error: " + e.Message, EventLogEntryType.Error, 50906);
+                    LenovoBacklightControl.WriteToDebugLog("Powersetting Interop failed. Error: " + e.Message);
+                }
+
             }
             else if (control == SERVICE_CONTROL_STOP)
             {
