@@ -21,6 +21,8 @@ namespace LBCService
 
         public LenovoBacklightControl()
         {
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
+
             InitializeComponent();
             DebugMode();
             DebugLogPath = AppDomain.CurrentDomain.BaseDirectory + "DebugLog.txt";
@@ -126,6 +128,12 @@ namespace LBCService
             NamedPipeServer.StopNamedPipe();
             NamedPipeThread.Join();
             WriteToDebugLog("Stop complete.");
+        }
+
+        static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            // Log the exception, display it, etc
+            Debug.WriteLine((e.ExceptionObject as Exception).Message);
         }
     }
 }

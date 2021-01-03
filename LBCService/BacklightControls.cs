@@ -5,15 +5,27 @@ using System.Reflection;
 
 namespace LBCService
 {
+    public class HidKbdData
+    {
+        public string strProductId;
+        public string strVendorId;
+        public string GetHidUsagePage;
+        public string GetHidUsage;
+        public string SetHidUsagePage;
+        public string SetHidUsage;
+    }
+
     public class BacklightControls
     {
         public void ActivateBacklight(int lightValue)
         {
+            FileVersionInfo kbcver = null;
             if (System.IO.File.Exists(LenovoBacklightControl.KBCorePath))
             {
                 try
                 {
                     Keyboard_Core = Assembly.LoadFile(LenovoBacklightControl.KBCorePath);
+                    kbcver = FileVersionInfo.GetVersionInfo(LenovoBacklightControl.KBCorePath);
                 }
                 catch (Exception e)
                 {
@@ -37,10 +49,32 @@ namespace LBCService
             KCInstance = Activator.CreateInstance(AssemblyType);
 
             //get internal method info for changing the KB Backlight status
-            var setKeyboardBackLightStatusInfo = GetRuntimeMethodsExt(AssemblyType, "SetKeyboardBackLightStatus");
-
-            object[] lightLevel = { lightValue };
-            var output = (UInt32)setKeyboardBackLightStatusInfo.Invoke(KCInstance, lightLevel);
+            try
+            {
+                object[] lightLevel = { };
+                var setKeyboardBackLightStatusInfo = GetRuntimeMethodsExt(AssemblyType, "SetKeyboardBackLightStatus");
+                if (kbcver.FileVersion == "2.0.0.15")
+                {
+                    //set with new method
+                    HidKbdData hkbData = null;
+                    object[] llObjects = { lightValue, hkbData };
+                    lightLevel = llObjects;
+                }
+                else
+                {
+                    //set with old method
+                    object[] llObjects = { lightValue };
+                    lightLevel = llObjects;
+                }
+                var output = (UInt32)setKeyboardBackLightStatusInfo.Invoke(KCInstance, lightLevel);
+            }
+            catch (Exception e)
+            {
+                const string error = "Unable to load Keyboard_Core.dll. Service will stop.";
+                EventLog.WriteEntry("LenovoBacklightControl", error, EventLogEntryType.Error, 50917);
+                LenovoBacklightControl.WriteToDebugLog(error);
+                LenovoBacklightControl.LBCServiceBase.Stop();
+            }
         }
 
         private Assembly Keyboard_Core;
